@@ -1,7 +1,8 @@
 package com.teamlab.scala.konv
 
-import scala.language.experimental.macros
+import org.scalatest.exceptions.TestFailedException
 
+import scala.language.experimental.macros
 import org.scalatest.{DiagrammedAssertions, FunSpec, Matchers}
 
 class KonvBasicSpec extends FunSpec with Matchers with DiagrammedAssertions {
@@ -16,16 +17,16 @@ class KonvBasicSpec extends FunSpec with Matchers with DiagrammedAssertions {
       val tar2 = tar.copy(aaa = "!"+tar.aaa)
 
       it("create by constructor") {
-        assert(Konv.to[Target].by(src) == tar)
-        assert(Konv.to[Target].by(src, aaa="!"+src.aaa) == tar2)
+        assert(From(src).to[Target] == tar)
+        assert(From(src, aaa="!"+src.aaa).to[Target] == tar2)
       }
       it("create by companion") {
-        assert(Konv.to(Target).by(src) == tar)
-        assert(Konv.to(Target).by(src, aaa="!" + src.aaa) == tar2)
+        assert(From(src).to(Target) == tar)
+        assert(From(src, aaa="!" + src.aaa).to(Target) == tar2)
       }
       it("create by factory") {
-        assert(Konv.to(Target.apply _).by(src) == tar)
-        assert(Konv.to(Target.apply _).by(src, aaa="!"+src.aaa) == tar2)
+        assert(From(src).to(Target.apply _) == tar)
+        assert(From(src, aaa="!"+src.aaa).to(Target.apply _) == tar2)
       }
     }
     it("Renamed"){
@@ -35,7 +36,7 @@ class KonvBasicSpec extends FunSpec with Matchers with DiagrammedAssertions {
 
       val src = Source(10, "hhh", 2)
       val tar = Target("hhh", 10, 2)
-      assert(Konv.to[Target].by(src, CCC=src.ccc) == tar)
+      assert(From(src, CCC=src.ccc).to[Target] == tar)
     }
     it("SubConvert"){
       case class SSub(aaa: Int)
@@ -46,8 +47,8 @@ class KonvBasicSpec extends FunSpec with Matchers with DiagrammedAssertions {
       val src = Source(SSub(10))
       val tar = Target(TSub(10))
 
-      implicit val sub = Konv[SSub, TSub]{ a:SSub => Konv.to[TSub].by(a) }
-      assert(Konv.to(Target).by(src) == tar)
+      implicit val sub = Konv[SSub, TSub]{ a:SSub => From(a).to[TSub] }
+      assert(From(src).to(Target) == tar)
     }
     it("ApplyOverrids"){
       case class Source(bbb: Int, aaa: String)
@@ -63,7 +64,7 @@ class KonvBasicSpec extends FunSpec with Matchers with DiagrammedAssertions {
       val src = Source(10, "hhh")
       val tar = Target("hhh", 10)
 
-      assert(Konv.to[Target].by(src) == tar)
+      assert(From(src).to[Target] == tar)
     }
     describe("TraitAndCompanion"){
       case class Source(bbb: Int, aaa: String)
@@ -82,26 +83,26 @@ class KonvBasicSpec extends FunSpec with Matchers with DiagrammedAssertions {
       }
 
       it("TraitAndCompanion factory") {
-        assert(Konv.to(Target.apply _).by(Source(10, "hhh")) == Target(10, "hhh"))
+        assert(From(Source(10, "hhh")).to(Target.apply _) == Target(10, "hhh"))
       }
     }
     describe("create by constructor") {
       it("need constructor"){
         trait Target
         case class Source(bbb: Int, aaa: String)
-        assertDoesNotCompile("""
-          Konv.to[Target].by(Source(100, "xxx"))
-        """)
+        assert(intercept[TestFailedException](assertCompiles("""
+          From(Source(100, "xxx")).to[Target]
+        """)).getMessage().contains("has not public constructor"))
       }
       it("constructor has no arguments"){
         class Target
         case class Source(bbb: Int)
-        assert(Konv.to[Target].by(Source(100)).isInstanceOf[Target])
+        assert(From(Source(100)).to[Target].isInstanceOf[Target])
       }
       it("constructor has one arguments"){
         class Target(val bbb: Int)
         case class Source(bbb: Int)
-        assert(Konv.to[Target].by(Source(100)).bbb == 100)
+        assert(From(Source(100)).to[Target].bbb == 100)
       }
     }
     describe("create by function") {
@@ -113,12 +114,12 @@ class KonvBasicSpec extends FunSpec with Matchers with DiagrammedAssertions {
       it("test"){
         case class Source(bbb: Int, aaa: String)
         def factory(aaa:String, bbb:Int):Target = new TargetImpl(aaa, bbb)
-        assert(Konv.to(factory _).by(Source(100, "xxx")) == new TargetImpl("xxx", 100))
+        assert(From(Source(100, "xxx")).to(factory _) == new TargetImpl("xxx", 100))
       }
       it("use default"){
         case class Source(aaa: String)
         def factory(aaa:String, bbb:Int=100):Target = new TargetImpl(aaa, bbb)
-        assert(Konv.to(factory _).by(Source("xxx")) == new TargetImpl("xxx", 100))
+        assert(From(Source("xxx")).to(factory _) == new TargetImpl("xxx", 100))
       }
     }
   }
