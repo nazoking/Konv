@@ -33,15 +33,15 @@ From(user, name=s"${user.firstName} ${user.lastName}").to[UserForApi]
 auto mapping parameters from source object same name fields. or using named parameter of `by` method.
 
   1. `From` set source and generate.
-    - `From(sourceObject)`
-    - `From(sourceObject, param1=overwrite)` overwrite parameters.
+     - `From(sourceObject)`
+     - `From(sourceObject, param1=overwrite)` overwrite parameters.
         - use for parameter rename
         - use for parameter type change
         - use for some calculation
-  2. `to` set target
-    - `to[TYPE]` generate by primary constructor
-    - `to(Factory.apply _)` generate by factory method
-    - `to(CompanionObject)` is same as `to(CompanionObject.apply _)`
+  2. `to` set target, and get
+     - `to[TYPE]` generate by primary constructor
+     - `to(Factory.apply _)` generate by factory method
+     - `to(CompanionObject)` is same as `to(CompanionObject.apply _)`
 
 ### create custom module
 
