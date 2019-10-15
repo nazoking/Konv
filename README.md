@@ -71,3 +71,23 @@ case class Target(value:T1)
 
 and you can use default converters defined on `KonvDefaults`.
 
+Using Rules
+-----------
+
+  1. overwrite parameters if exists
+  2. same name field if exists in source
+    * if type is different, try below
+      1. try `implicit val Konv[A, B].map(source)`
+      2. try `new Target(source)`
+      3. if source type is single-value-case-class and parameter type is it, use `source.value`
+      4. and `new Target(source.value)`
+  3. default value if exists, not set
+
+
+Related Projects
+----------------
+
+  * https://mapstruct.org/
+  * http://modelmapper.org/
+  * http://jmapper-framework.github.io/jmapper-core/
+
