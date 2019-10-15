@@ -1,9 +1,9 @@
 package com.teamlab.scala.konv.internal
 
-import com.teamlab.scala.konv.{From, Konv}
-
-import scala.reflect.api.{Trees, Position => Pos}
+import scala.reflect.api.{Position => Pos}
 import scala.reflect.macros.blackbox.Context
+
+import com.teamlab.scala.konv.{From, Konv}
 
 class Macro(val c: Context) {
   import c.universe._
@@ -35,7 +35,7 @@ class Macro(val c: Context) {
   }
   case class SourceInfo(tree: c.Tree, tpe: c.Type, name: c.TermName)
   object SourceInfo {
-    def apply(tree: c.Tree): SourceInfo = new SourceInfo(tree, tree.tpe, c.freshName())
+    def apply(tree: c.Tree): SourceInfo = new SourceInfo(tree, tree.tpe, TermName(c.freshName()))
   }
 
   case class Factory(tree: Tree, method: MethodSymbol)
@@ -93,8 +93,9 @@ class Macro(val c: Context) {
       overwrites: Map[c.TermName, c.Tree]
   ): c.Expr[B] = {
     val sources = args.map(SourceInfo.apply)
-    val params = generateParams[B](sources, overwrites, factory.method)
-    val sets = sources.map(s => q"""val ${s.name} = ${s.tree}""")
+    val (pnames, params) = generateParams[B](sources, overwrites, factory.method).unzip
+    val pnameset = pnames.flatten.toSet
+    val sets = sources.filter(pnameset.contains).map(s => q"""val ${s.name} = ${s.tree}""")
     val ret = if (factory.tree.isType) {
       q"""{ ..$sets;  new ${factory.tree}(..$params) }"""
     } else {
@@ -112,7 +113,7 @@ class Macro(val c: Context) {
       sources: Seq[SourceInfo],
       overwrites: Map[c.TermName, c.Tree],
       factory: MethodSymbol
-  ): List[c.Tree] = {
+  ): List[(Option[SourceInfo], c.Tree)] = {
     val params = factory.paramLists.head
     val dparams = scala.collection.mutable.Map(overwrites.toSeq: _*)
     val ret = params
@@ -121,11 +122,11 @@ class Macro(val c: Context) {
         dparams.get(name) match {
           case Some(value) =>
             dparams.remove(name)
-            q"$name = $value"
+            None -> q"$name = $value"
           case None =>
             findSourceField(sources, name) match {
               case None =>
-                if (parameter.asTerm.isParamWithDefault) q""
+                if (parameter.asTerm.isParamWithDefault) None -> q""
                 else
                   throw new MacroError(
                     s"not enough arguments for ${factory.fullName} Unspecified value parameter $name:${parameter.typeSignature}"
@@ -134,12 +135,12 @@ class Macro(val c: Context) {
                 val tep = weakTypeOf[B]
                 val pt = parameter.typeSignature.asSeenFrom(tep, tep.typeSymbol.asClass)
                 val sourceType = method.returnType.asSeenFrom(source.tpe, source.tpe.typeSymbol.asClass)
-                q"""${parameter} = ${autoConvert(q"${source.name}.$name", sourceType, pt)
+                Some(source) -> q"""${parameter} = ${autoConvert(q"${source.name}.$name", sourceType, pt)
                   .getOrElse(q"${source.name}.$name:$pt")}"""
             }
         }
       }
-      .filterNot(_.isEmpty)
+      .filterNot(_._2.isEmpty)
     if (dparams.nonEmpty)
       throw new MacroError(
         s"${dparams.keys} is not in ${factory.fullName}",

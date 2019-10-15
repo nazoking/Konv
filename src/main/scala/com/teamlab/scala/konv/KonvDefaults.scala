@@ -1,5 +1,6 @@
 package com.teamlab.scala.konv
 
+import scala.language.higherKinds
 import scala.collection.generic.CanBuildFrom
 
 /**

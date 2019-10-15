@@ -68,13 +68,13 @@ object From extends Dynamic {
   def applyDynamicNamed(name: String)(args: (String, Any)*): From = {
     name match {
       case "apply" => new From()
-      case _       => throw new RuntimeException(s"method $name is not implemented")
+      case _       => throw new RuntimeException(s"method $name $args is not implemented")
     }
   }
   def applyDynamic(name: String)(args: Any): From = {
     name match {
       case "apply" => new From()
-      case _       => throw new RuntimeException(s"method $name is not implemented")
+      case _       => throw new RuntimeException(s"method $name $args is not implemented")
     }
   }
 }

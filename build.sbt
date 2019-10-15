@@ -7,3 +7,17 @@ scalaVersion := "2.12.10"
 libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value % Test
 libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % Test
+
+scalacOptions in ThisBuild ++= Seq(
+  "-deprecation",
+  "-feature",
+  "-unchecked",
+  "-Ywarn-macros:after",
+  "-Xlint",
+  "-Ywarn-unused:imports",
+  "-Ywarn-dead-code",
+  "-Ywarn-numeric-widen")
+
+scalacOptions += "-Ywarn-unused:imports,patvars,privates,locals,explicits,-implicits"
+scalacOptions in Test += "-Ywarn-unused:imports,-patvars,-privates,-locals,-explicits,-implicits"
+
