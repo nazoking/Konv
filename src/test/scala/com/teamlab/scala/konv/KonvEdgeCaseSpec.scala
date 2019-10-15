@@ -77,8 +77,17 @@ class KonvEdgeCaseSpec extends RefSpec with DiagrammedAssertions {
       """)).contains("type mismatch"))
     }
     def `can compile if defined implicit Konv`: Unit = {
-      implicit val x = Konv[Long, String](x => x.toString)
-      assert(From(Source()).to[Target] == Target("1"))
+      implicit val x = Konv[Long, String](x => "implicit parameter "+x.toString)
+      assert(From(Source()).to[Target] == Target("implicit parameter 1"))
+    }
+    def `can compile if defined implicit conversion`: Unit = {
+      implicit def x(x:Long) = "implicit conversion "+x.toString
+      assert(From(Source()).to[Target] == Target("implicit conversion 1"))
+    }
+    def `use implicit parameter over implicit conversion`: Unit = {
+      implicit def ic(x:Long) = "conversion"
+      implicit val ip = Konv[Long, String](x => "parameter")
+      assert(From(Source()).to[Target] == Target("parameter"))
     }
   }
   object `warp unwrap single value class` {
@@ -109,8 +118,8 @@ class KonvEdgeCaseSpec extends RefSpec with DiagrammedAssertions {
     }
     def `generics inner class`: Unit = {
       case class Source[A](name: String, value: A) {
-        def auto = From(this).to[Target]
         case class Target(name: String, value: A)
+        def auto = From(this).to[Target]
         def manual = Target(this.name, this.value)
       }
       val s = Source[Int]("x", 1)

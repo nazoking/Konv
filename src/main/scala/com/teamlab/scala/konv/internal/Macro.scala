@@ -40,14 +40,11 @@ class Macro(val c: Context) {
     val constructor = typ.member(termNames.CONSTRUCTOR)
     val ftr = constructor.alternatives.filter(_.asMethod.isPublic) match {
       case head :: Nil => Factory(q"$typ", head.asMethod)
-      case Nil         => throw new MacroError(s"${typ} has not public constructor")
+      case Nil         => c.abort(c.enclosingPosition, s"${typ} has not public constructor")
       case list =>
         list.find(_.asMethod.isPrimaryConstructor) match {
           case Some(cst) => Factory(q"$typ", cst.asMethod)
-          case None =>
-            throw new MacroError(
-              s"${typ} has not primary constructor. ${list.size} constructors exists"
-            )
+          case None => c.abort(c.enclosingPosition, s"${typ} has not primary constructor. ${list.size} constructors exists")
         }
     }
     val (args, overwrites) = findArs(c.prefix.tree)
@@ -142,7 +139,7 @@ class Macro(val c: Context) {
                 val tep = weakTypeOf[B]
                 val pt = p.typeSignature.asSeenFrom(tep, tep.typeSymbol.asClass)
                 q"""${p} = ${autoConvert(q"$source.$name", sourceType, pt)
-                  .getOrElse(q"$source:${pt}")}"""
+                  .getOrElse(q"$source.$name:$pt")}"""
             }
         }
       }
