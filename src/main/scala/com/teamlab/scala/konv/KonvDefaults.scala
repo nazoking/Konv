@@ -7,7 +7,8 @@ import scala.collection.generic.CanBuildFrom
   */
 object KonvDefaults {
   trait <:!<[A, B]
-  implicit def nsub[A, B]: A <:!< B = new <:!<[A, B] {}
+  private val `_<:!<` : <:!<[Any, Any] = new <:!<[Any, Any] {}
+  implicit def nsub[A, B]: A <:!< B = `_<:!<`.asInstanceOf[<:!<[A, B]]
   implicit def nsubAmbig1[A, B >: A]: A <:!< B = sys.error("Unexpected call")
   implicit def nsubAmbig2[A, B >: A]: A <:!< B = sys.error("Unexpected call")
   trait LowPriorityDefaults {
@@ -23,7 +24,8 @@ object KonvDefaults {
     /** rule. convert iterable type */
     implicit def default_listTo[C1, X, Col[_]](
         implicit cbf: CanBuildFrom[Nothing, X, Col[X]],
-        ev1: C1 <:< Iterable[X]
+        ev1: C1 <:< Iterable[X],
+        ev2: C1 <:!< Col[X]
     ): Konv[C1, Col[X]] = _.to[Col]
 
     /** rule. convert iterable items */
@@ -31,14 +33,17 @@ object KonvDefaults {
       Y
     ]](
         implicit cmap: Konv[Iterable[Y], CY[Y]],
-        imap: Konv[X, Y]
+        imap: Konv[X, Y],
+        ev: CX[X] <:!< CY[Y]
     ): Konv[CX[X], CY[Y]] = Konv { a: CX[X] =>
       cmap.map(a.map(imap.map))
     }
 
     /** rule. convert map values */
     implicit def default_mapValues[A, B, X](
-        implicit imap: Konv[A, B]
+        implicit imap: Konv[A, B],
+        ev1: Map[X, A] <:!< Map[X, B],
+        ev2: A <:!< B
     ): Konv[Map[X, A], Map[X, B]] = Konv { a: Map[X, A] =>
       a.mapValues(imap.map)
     }
@@ -54,7 +59,7 @@ object KonvDefaults {
     implicit def default_useImplicitConversion[B, A](
         implicit ev: A => B
     ): Konv[A, B] = Konv { a =>
-      a
+      ev(a)
     }
   }
 

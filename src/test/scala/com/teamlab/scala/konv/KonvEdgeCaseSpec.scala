@@ -77,15 +77,15 @@ class KonvEdgeCaseSpec extends RefSpec with DiagrammedAssertions {
       """)).contains("type mismatch"))
     }
     def `can compile if defined implicit Konv`: Unit = {
-      implicit val x = Konv[Long, String](x => "implicit parameter "+x.toString)
+      implicit val x = Konv[Long, String](x => "implicit parameter " + x.toString)
       assert(From(Source()).to[Target] == Target("implicit parameter 1"))
     }
     def `can compile if defined implicit conversion`: Unit = {
-      implicit def x(x:Long) = "implicit conversion "+x.toString
+      implicit def x(x: Long) = "implicit conversion " + x.toString
       assert(From(Source()).to[Target] == Target("implicit conversion 1"))
     }
     def `use implicit parameter over implicit conversion`: Unit = {
-      implicit def ic(x:Long) = "conversion"
+      implicit def ic(x: Long) = "conversion"
       implicit val ip = Konv[Long, String](x => "parameter")
       assert(From(Source()).to[Target] == Target("parameter"))
     }
