@@ -1,103 +1,113 @@
 package com.teamlab.scala.konv
 
+import org.scalatest.DiagrammedAssertions
 import org.scalatest.exceptions.TestFailedException
-import org.scalatest.{DiagrammedAssertions, FunSpec, Matchers}
+import org.scalatest.refspec.RefSpec
 
-class KonvEdgeCaseSpec extends FunSpec with DiagrammedAssertions {
-  describe("corner case") {
-    it("can use reserved keyword") {
-      case class Target(`type`: String)
-      case class Source(`type`: String)
-      assert(From(Source("test")).to[Target] == Target("test"))
-    }
-    it("use primary constructor") {
-      case class Source(primary: String, second: String, y: Int)
+class KonvEdgeCaseSpec extends RefSpec with DiagrammedAssertions {
+  def `can use reserved keyword`: Unit = {
+    case class Target(`type`: String, `class`: Int)
+    case class Source(`type`: String, `class`: Int)
+    assert(From(Source("test", 1)).to[Target] == Target("test", 1))
+  }
+  object `can use constructor` {
+    case class Source(primary: String = "primary", second: BigDecimal = BigDecimal(2.1), y: Int = 3)
+    def `use primary constructor(1)` : Unit = {
       class Target(val primary: String) {
-        def this(second: String, y: Int) {
-          this(second)
-        }
+        def this(second: BigDecimal, y: Int) = this("second")
       }
-      assert(From(Source("primary", "second", 2)).to[Target].primary == "primary")
+      assert(From(Source()).to[Target].primary == "primary")
     }
-    it("no params primary constructor") {
-      case class Source(primary: String, second: String, y: Int)
+
+    def `use primary constructor(2)` : Unit = {
+      class Target(val primary: String, y: Int) {
+        def this(second: BigDecimal) = this("second", 10)
+      }
+      assert(From(Source()).to[Target].primary == "primary")
+    }
+
+    def `when primary constructor has no params`: Unit = {
       class Target {
         var test: String = "no"
         def this(second: String, y: Int) {
           this()
-          test = second
+          fail()
         }
       }
-      assert(From(Source("primary", "second", 2)).to[Target].test == "no")
+      assert(From(Source()).to[Target].test == "no")
     }
-    it("private primary constructor and one public constructor") {
-      case class Source(primary: String, second: String, y: Int)
+
+    def `private primary constructor and one public constructor`: Unit = {
       class Target private (val primary: String) {
-        def this(second: String, y: Int) {
-          this(second)
-        }
+        def this(second: BigDecimal, y: Int) = this("second")
       }
-      assert(From(Source("primary", "second", 2)).to[Target].primary == "second")
+      assert(From(Source()).to[Target].primary == "second")
     }
-    it("Can't use if private primary constructor and many public constructors") {
-      case class Source(primary: String, second: BigDecimal, y: Int)
+
+    def `Can't use if private primary constructor and many public constructors`: Unit = {
       class Target private (val primary: String) {
-        def this(y: Int) {
-          this(y.toString)
-        }
-        def this(second: BigDecimal) {
-          this(second.toString)
-        }
+        def this(y: Int) = this(y.toString)
+        def this(second: BigDecimal) = this("second")
       }
-      val src = Source("primary", BigDecimal("2.1"), 3)
+      val src = Source()
       assert(getTestErrorMessage(assertCompiles("""
         From(src).to[Target]
       """)).contains("has not primary constructor"))
     }
-    describe("implicit konv") {
-      case class Target1(name: String)
-      case class Target(x: Target1)
-      case class Source(x: Long)
-      val source = Source(1)
-      val target = Target(Target1("1"))
-      it("can compile if dose not define implicit Konv") {
-        assert(getTestErrorMessage(assertCompiles("""
-        From(source).to[Target] == target
-        """)).contains("type mismatch"))
+  }
+  object `can use factory` {
+    object `can select factory overrides` {
+      def factory(a: Int): Long = 1
+      def factory(a: Int, b: Long): Long = 2
+      case class Source(a: Int = 1, b: Long = 2)
+      def `select 1`: Unit = {
+        assert(From(Source()).to(factory(_: Int)) == 1)
       }
-      it("can compile if defined implicit Konv") {
-        implicit val x = Konv[Long, Target1](x => Target1(x.toString))
-        assert(From(source).to[Target] == target)
+      def `select 2`: Unit = {
+        assert(From(Source()).to(factory(_: Int, _: Long)) == 2)
       }
     }
   }
-  describe("warp unwarp single value class") {
+  object `implicit konv` {
+    case class Target(x: String)
+    case class Source(x: Long = 1)
+    def `can compile if dose not define implicit Konv`: Unit = {
+      assert(getTestErrorMessage(assertCompiles("""
+      From(Source()).to[Target] == Target("1")
+      """)).contains("type mismatch"))
+    }
+    def `can compile if defined implicit Konv`: Unit = {
+      implicit val x = Konv[Long, String](x => x.toString)
+      assert(From(Source()).to[Target] == Target("1"))
+    }
+  }
+  object `warp unwrap single value class` {
     case class Target1(name: String)
     case class Target(x: Target1)
     case class Source1(x: String)
-    it("auto wrap") {
+    def `auto wrap`: Unit = {
       assert(From(Source1("1")).to[Target] == Target(Target1("1")))
     }
-    it("auto unwrap") {
+    def `auto unwrap`: Unit = {
       assert(From(Target(Target1("1"))).to[Source1] == Source1("1"))
     }
   }
-  describe("generic class") {
+  object `generic class` {
     case class S1(a: String, v: Int)
     case class Source[A](name: String, value: A)
-    it("generics") {
+    def `generics`: Unit = {
       case class T1(a: String, v: Int)
       case class Target[A](name: String, value: A)
       implicit val x = Konv.mapper[S1, T1]
       assert(From(Source("x", S1("a", 1))).to[Target[T1]] == Target("x", T1("a", 1)))
     }
-    it("generics 2") {
+    def `generics 2`: Unit = {
       case class T1[A](a: A, v: Int)
       case class Target[A](name: String, value: A)
       implicit val x = Konv.mapper[S1, T1[String]]
       assert(From(Source("x", S1("a", 1))).to[Target[T1[String]]] == Target("x", T1("a", 1)))
     }
-    it("generics inner class") {
+    def `generics inner class`: Unit = {
       case class Source[A](name: String, value: A) {
         def auto = From(this).to[Target]
         case class Target(name: String, value: A)
