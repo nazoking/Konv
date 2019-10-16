@@ -104,10 +104,27 @@ class KonvEdgeCaseSpec extends RefSpec with DiagrammedAssertions {
       assert(From(Target(Target1("1"))).to[Source1] == Source1("1"))
     }
   }
+  object `side effect` {
+    def `test side effect`(): Unit = {
+      case class Target(a: Int)
+      var x = 10
+      def i = {
+        x += 1
+        x
+      }
+      assert(From(i /* no use */, a = i).to[Target] == Target(11))
+      assert(i == 12)
+    }
+    def `test underscore`(): Unit = {
+      case class Target(a: Int)
+      def test : Target => Target = From(_).to[Target]
+      assert(test(Target(10)) == Target(10))
+    }
+  }
   object `generic class` {
     case class S1(a: String, v: Int)
     case class Source[A](name: String, value: A)
-    def `generics`(): Unit = {
+    def `test generics`(): Unit = {
       case class T1(a: String, v: Int)
       case class Target[A](name: String, value: A)
       implicit val x = Konv.mapper[S1, T1]

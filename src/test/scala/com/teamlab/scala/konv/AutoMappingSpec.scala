@@ -13,7 +13,7 @@ trait TestKonvs extends KonvDefaults {
   implicit val pClassBC = Konv.mapper[SourcePolymorphicClassB, TargetPolymorphicClassB]
 }
 class AutomapperSpec extends RefSpec with Matchers with TestData with TestKonvs {
-  object `automap` {
+  object `automap ` {
 
     def `map a case class to another case class as expected`(): Unit = {
       assert(From(source).to[TargetClass] === target)
@@ -85,7 +85,7 @@ class AutomapperSpec extends RefSpec with Matchers with TestData with TestKonvs 
     }
   }
 
-  object `set` {
+  object `set ` {
     val values = source.list
     def sum(values: List[Int]) = values.sum
     def `map a case class to another case class allowing dynamic fields mapping`(): Unit = {

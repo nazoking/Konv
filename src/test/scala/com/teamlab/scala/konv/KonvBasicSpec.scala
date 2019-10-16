@@ -5,7 +5,7 @@ import org.scalatest.refspec.RefSpec
 import org.scalatest.{DiagrammedAssertions, Matchers}
 
 class KonvBasicSpec extends RefSpec with Matchers with DiagrammedAssertions {
-  object `Simple` {
+  object `Simple ` {
     case class Source(bbb: Int, aaa: String)
 
     case class Target(aaa: String, bbb: Int)
@@ -27,7 +27,7 @@ class KonvBasicSpec extends RefSpec with Matchers with DiagrammedAssertions {
       assert(From(src, aaa = "!" + src.aaa).to(Target.apply _) == tar2)
     }
   }
-  def `Renamed`(): Unit = {
+  def `Renamed `(): Unit = {
     case class Source(bbb: Int, aaa: String, ccc: Long)
 
     case class Target(aaa: String, bbb: Int, CCC: Long)
@@ -36,7 +36,7 @@ class KonvBasicSpec extends RefSpec with Matchers with DiagrammedAssertions {
     val tar = Target("hhh", 10, 2)
     assert(From(src, CCC = src.ccc).to[Target] == tar)
   }
-  def `SubConvert`(): Unit = {
+  def `Sub Convert`(): Unit = {
     case class SSub(aaa: Int)
     case class TSub(aaa: Int)
 
@@ -50,7 +50,7 @@ class KonvBasicSpec extends RefSpec with Matchers with DiagrammedAssertions {
 //    }
     assert(From(src).to(Target) == tar)
   }
-  def `ApplyOverrids`(): Unit = {
+  def `Apply Overrids`(): Unit = {
     case class Source(bbb: Int, aaa: String)
 
     case class Target(aaa: String, bbb: Int)
@@ -69,7 +69,7 @@ class KonvBasicSpec extends RefSpec with Matchers with DiagrammedAssertions {
 
     assert(From(src).to[Target] == tar)
   }
-  object `TraitAndCompanion` {
+  object `Trait And Companion` {
     case class Source(bbb: Int, aaa: String)
 
     trait Target { def aaa: String; def bbb: Int }
@@ -80,7 +80,7 @@ class KonvBasicSpec extends RefSpec with Matchers with DiagrammedAssertions {
 
     def `TraitAndCompanion factory`(): Unit = {
       val ac = From(Source(10, "hhh")).to(Target.apply _)
-      assert(ac.aaa == 10)
+      assert(ac.bbb == 10)
       assert(ac.aaa == "hhh")
     }
   }
@@ -111,7 +111,7 @@ class KonvBasicSpec extends RefSpec with Matchers with DiagrammedAssertions {
         obj.asInstanceOf[TargetImpl].x == this.x && obj.asInstanceOf[TargetImpl].y == this.y
       override def toString: String = s"TargetImpl($x, $y)"
     }
-    def `test`(): Unit = {
+    def `test `(): Unit = {
       case class Source(bbb: Int, aaa: String)
       def factory(aaa: String, bbb: Int): Target = new TargetImpl(aaa, bbb)
       assert(From(Source(100, "xxx")).to(factory _) == new TargetImpl("xxx", 100))
