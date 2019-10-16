@@ -90,4 +90,7 @@ Related Projects
   * https://mapstruct.org/
   * http://modelmapper.org/
   * http://jmapper-framework.github.io/jmapper-core/
+  * https://github.com/bfil/scala-automapper Hassle-free case class mapping!
+  * https://scalalandio.github.io/chimney/ Scala library for boilerplate-free data transformations
+
 
