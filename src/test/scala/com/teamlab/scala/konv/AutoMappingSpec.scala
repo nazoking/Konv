@@ -4,13 +4,13 @@ import org.scalatest._
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.refspec.RefSpec
 
-trait TestKonvs extends KonvDefaults {
-  implicit val dataC = Konv.mapper[SourceData, TargetData]
-  implicit val level2C = Konv.mapper[SourceLevel2, TargetLevel2]
-  implicit val level1C = Konv.mapper[SourceLevel1, TargetLevel1]
-  implicit val mainC = Konv.mapper[SourceClass, TargetClass]
-  implicit val pClassAC = Konv.mapper[SourcePolymorphicClassA, TargetPolymorphicClassA]
-  implicit val pClassBC = Konv.mapper[SourcePolymorphicClassB, TargetPolymorphicClassB]
+trait TestKonvs extends Defaults {
+  implicit val dataC = Mapper.mapper[SourceData, TargetData]
+  implicit val level2C = Mapper.mapper[SourceLevel2, TargetLevel2]
+  implicit val level1C = Mapper.mapper[SourceLevel1, TargetLevel1]
+  implicit val mainC = Mapper.mapper[SourceClass, TargetClass]
+  implicit val pClassAC = Mapper.mapper[SourcePolymorphicClassA, TargetPolymorphicClassA]
+  implicit val pClassBC = Mapper.mapper[SourcePolymorphicClassB, TargetPolymorphicClassB]
 }
 class AutomapperSpec extends RefSpec with Matchers with TestData with TestKonvs {
   object `automap ` {
@@ -143,14 +143,14 @@ class AutomapperSpec extends RefSpec with Matchers with TestData with TestKonvs 
     }
 
     def `map a polymorphic type field`(): Unit = {
-      implicit val conversion = Konv(mapPolymorphicTrait)
+      implicit val conversion = Mapper(mapPolymorphicTrait)
 //      implicit val conversion2 = Konv.mapper[SourcePolymorphicClass, TargetPolymorphicClass]
       assert(From(sourcePolymorphicA).to[TargetPolymorphicClass] === targetPolymorphicA)
       assert(From(sourcePolymorphicB).to[TargetPolymorphicClass] === targetPolymorphicB)
     }
 
     def `throw an exception for an unmapped polymorphic type`(): Unit = {
-      implicit val conversion = Konv(mapPolymorphicTrait)
+      implicit val conversion = Mapper(mapPolymorphicTrait)
 //      implicit val conversion2 = Konv.mapper[SourcePolymorphicClass, TargetPolymorphicClass]
       assertThrows[MatchError] {
         From(sourcePolymorphicC).to[TargetPolymorphicClass]
@@ -164,7 +164,7 @@ class AutomapperSpec extends RefSpec with Matchers with TestData with TestKonvs 
     }
 
     def `useing implicit mapping`(): Unit = {
-      implicit val implicitMapping = Konv[SourceClass, TargetWithDynamicMapping] { a: SourceClass =>
+      implicit val implicitMapping = Mapper[SourceClass, TargetWithDynamicMapping] { a: SourceClass =>
         From(a, renamedField = a.field, total = a.list.sum).to[TargetWithDynamicMapping]
       }
 //      implicit val conversion2 = Konv.mapper[SourceClass1, TargetClass1]

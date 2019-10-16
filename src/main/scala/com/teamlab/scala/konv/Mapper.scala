@@ -1,24 +1,28 @@
 package com.teamlab.scala.konv
 
-import scala.language.higherKinds
 import scala.collection.generic.CanBuildFrom
+import scala.language.higherKinds
+import scala.language.experimental.macros
 
-/**
-  * default convert rules.
-  */
-object KonvDefaults {
-  trait <:!<[A, B]
-  private val `_<:!<` : <:!<[Any, Any] = new <:!<[Any, Any] {}
-  implicit def nsub[A, B]: A <:!< B = `_<:!<`.asInstanceOf[<:!<[A, B]]
-  implicit def nsubAmbig1[A, B >: A]: A <:!< B = sys.error("Unexpected call")
-  implicit def nsubAmbig2[A, B >: A]: A <:!< B = sys.error("Unexpected call")
+import com.teamlab.scala.konv.internal.NotSub.<:!<
+
+trait Mapper[-A, B] { def map(a: A): B }
+
+object Mapper {
+
+  /** create Konv */
+  def apply[A, B](f: A => B): Mapper[A, B] = f(_)
+
+  /** auto generate Konv[A, B]{ a:A => Konv.to[B].by(a) }  */
+  def mapper[A, B]: Mapper[A, B] = macro internal.Macro.generateMappingImpl[A, B]
+
   trait LowPriorityDefaults {
 
     /** rule. convert option item */
     implicit def default_optionMap[A, B](
-        implicit imap: Konv[A, B],
+        implicit imap: Mapper[A, B],
         ev: A <:!< B
-    ): Konv[Option[A], Option[B]] = Konv { a: Option[A] =>
+    ): Mapper[Option[A], Option[B]] = Mapper { a: Option[A] =>
       a.map(imap.map)
     }
 
@@ -27,49 +31,47 @@ object KonvDefaults {
         implicit cbf: CanBuildFrom[Nothing, X, Col[X]],
         ev1: C1 <:< Iterable[X],
         ev2: C1 <:!< Col[X]
-    ): Konv[C1, Col[X]] = _.to[Col]
+    ): Mapper[C1, Col[X]] = _.to[Col]
 
     /** rule. convert iterable items */
     implicit def default_iterable[X, Y, CX[X] <: Iterable[X], CY[Y] <: Iterable[
       Y
     ]](
-        implicit cmap: Konv[Iterable[Y], CY[Y]],
-        imap: Konv[X, Y],
+        implicit cmap: Mapper[Iterable[Y], CY[Y]],
+        imap: Mapper[X, Y],
         ev: CX[X] <:!< CY[Y]
-    ): Konv[CX[X], CY[Y]] = Konv { a: CX[X] =>
+    ): Mapper[CX[X], CY[Y]] = Mapper { a: CX[X] =>
       cmap.map(a.map(imap.map))
     }
 
     /** rule. convert map values */
     implicit def default_mapValues[A, B, X](
-        implicit imap: Konv[A, B],
+        implicit imap: Mapper[A, B],
         ev1: Map[X, A] <:!< Map[X, B],
         ev2: A <:!< B
-    ): Konv[Map[X, A], Map[X, B]] = Konv { a: Map[X, A] =>
+    ): Mapper[Map[X, A], Map[X, B]] = Mapper { a: Map[X, A] =>
       a.mapValues(imap.map)
     }
 
     /** rule. convert object to option */
     implicit def default_toOption[A, B](
-        implicit imap: Konv[A, B]
-    ): Konv[A, Option[B]] = Konv { a: A =>
+        implicit imap: Mapper[A, B]
+    ): Mapper[A, Option[B]] = Mapper { a: A =>
       Option(imap.map(a))
     }
   }
   trait Defaults2 extends LowPriorityDefaults {
     implicit def default_useImplicitConversion[B, A](
         implicit ev: A => B
-    ): Konv[A, B] = Konv { a =>
+    ): Mapper[A, B] = Mapper { a =>
       ev(a)
     }
   }
 
   /** rules. same type through (not copy) */
   trait Defaults extends Defaults2 {
-    implicit def default_extends[A <: B, B]: Konv[A, B] = Konv { a =>
+    implicit def default_extends[A <: B, B]: Mapper[A, B] = Mapper { a =>
       a
     }
   }
 }
-
-trait KonvDefaults extends KonvDefaults.Defaults

@@ -1,7 +1,7 @@
 Konv
 ===============
 
-type safe auto-mapping framework scala.
+type safe auto-mapping / transform framework scala.
 
  * easy to use
  * type safe (compile-time type check)
@@ -45,10 +45,10 @@ auto mapping parameters from source object same name fields. or using named para
 
 ### create custom module
 
-`trait Konv[A, B]` is converter module (A to B). `konv` use type class.
+`trait Mapper[A, B]` is converter module (A to B). `konv` use type class.
 
 ```scala
-import com.teamlab.scala.konv.{From, Konv}
+import com.teamlab.scala.konv.{From, Mapper}
 case class S1(field: Int)
 case class T1(field: String)
 
@@ -61,15 +61,15 @@ case class Target(value:T1)
 
 {
   // create module type class
-  implicit val convert = Konv[S1, T1](s: S1 => T1(s.field.toString))
+  implicit val convert = Mapper[S1, T1](s: S1 => T1(s.field.toString))
 
-  // Konv.to use implicit Konv trait if source property class differ to target parameter class
+  // From.to use implicit Konv trait if source property class differ to target parameter class
   From(Source(S1(10))).to(Target)
   // Target(T1("10"))
 }
 ```
 
-and you can use default converters defined on `KonvDefaults`.
+and you can use default converters defined on `Defaults`.
 
 Using Rules
 -----------
@@ -77,7 +77,7 @@ Using Rules
   1. overwrite parameters if exists
   2. same name field if exists in source
     * if type is different, try below
-      1. try `implicit val Konv[A, B].map(source)`
+      1. try `implicit val Mapper[A, B].map(source)`
       2. try `new Target(source)`
       3. if source type is single-value-case-class and parameter type is it, use `source.value`
       4. and `new Target(source.value)`

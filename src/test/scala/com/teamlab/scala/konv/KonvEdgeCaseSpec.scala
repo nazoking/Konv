@@ -78,7 +78,7 @@ class KonvEdgeCaseSpec extends RefSpec with DiagrammedAssertions {
       """)).contains("type mismatch"))
     }
     def `can compile if defined implicit Konv`(): Unit = {
-      implicit val x = Konv[Long, String](x => s"implicit parameter $x")
+      implicit val x = Mapper[Long, String](x => s"implicit parameter $x")
       assert(From(Source()).to[Target] == Target("implicit parameter 1"))
     }
     def `can compile if defined implicit conversion`(): Unit = {
@@ -87,7 +87,7 @@ class KonvEdgeCaseSpec extends RefSpec with DiagrammedAssertions {
     }
     def `use implicit parameter over implicit conversion`(): Unit = {
       implicit def ic(x: Long) = s"conversion $x"
-      implicit val ip = Konv[Long, String](_ => "parameter")
+      implicit val ip = Mapper[Long, String](_ => "parameter")
       val x = ic(1L)
       assert(x == "conversion 1")
       assert(From(Source()).to[Target] == Target("parameter"))
@@ -139,13 +139,13 @@ class KonvEdgeCaseSpec extends RefSpec with DiagrammedAssertions {
     def `test generics`(): Unit = {
       case class T1(a: String, v: Int)
       case class Target[A](name: String, value: A)
-      implicit val x = Konv.mapper[S1, T1]
+      implicit val x = Mapper.mapper[S1, T1]
       assert(From(Source("x", S1("a", 1))).to[Target[T1]] == Target("x", T1("a", 1)))
     }
     def `generics 2`(): Unit = {
       case class T1[A](a: A, v: Int)
       case class Target[A](name: String, value: A)
-      implicit val x = Konv.mapper[S1, T1[String]]
+      implicit val x = Mapper.mapper[S1, T1[String]]
       assert(From(Source("x", S1("a", 1))).to[Target[T1[String]]] == Target("x", T1("a", 1)))
     }
     def `generics inner class`(): Unit = {

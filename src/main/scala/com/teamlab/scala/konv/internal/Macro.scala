@@ -3,7 +3,7 @@ package com.teamlab.scala.konv.internal
 import scala.reflect.api.{Position => Pos}
 import scala.reflect.macros.blackbox.Context
 
-import com.teamlab.scala.konv.{From, Konv}
+import com.teamlab.scala.konv.{From, Mapper}
 
 class Macro(val c: Context) {
   import c.universe._
@@ -21,7 +21,7 @@ class Macro(val c: Context) {
         c.Expr[B](q"")
     }
   }
-  def generateMappingImpl[A: c.WeakTypeTag, B: c.WeakTypeTag]: c.Expr[Konv[A, B]] = macroErrorGuard {
+  def generateMappingImpl[A: c.WeakTypeTag, B: c.WeakTypeTag]: c.Expr[Mapper[A, B]] = macroErrorGuard {
     val sourceType = weakTypeOf[A]
     val targetType = weakTypeOf[B]
 //    val to = if (targetType.typeSymbol.isClass && targetType.typeSymbol.asClass.isCaseClass) {
@@ -29,8 +29,8 @@ class Macro(val c: Context) {
 //    } else {
 //      q"to[$targetType]"
 //    }
-    //    println(q"""Konv[$sourceType, $targetType]{ a:$sourceType => $to.by(a) }""")
-    c.Expr(q"""com.teamlab.scala.konv.Konv[$sourceType, $targetType]{
+    //    println(q"""Mapper[$sourceType, $targetType]{ a:$sourceType => $to.by(a) }""")
+    c.Expr(q"""com.teamlab.scala.konv.Mapper[$sourceType, $targetType]{
          a:$sourceType => com.teamlab.scala.konv.From(a).to[$targetType] }""")
   }
   case class SourceInfo(tree: c.Tree, tpe: c.Type, name: c.TermName)
@@ -173,7 +173,7 @@ class Macro(val c: Context) {
   ): Option[c.Tree] =
     inferImplicitValue(sourceType, targetType)
       .map { mapper =>
-        /** if exists `implicit Konv[SOURCE, TARGET]` */
+        /** if exists `implicit Mapper[SOURCE, TARGET]` */
         q"$mapper.map($source)"
       }
       .orElse(
@@ -196,7 +196,7 @@ class Macro(val c: Context) {
       )
   def inferImplicitValue(sourceType: c.Type, targetType: c.Type): Option[c.Tree] = {
     val t = c.inferImplicitValue(
-      appliedType(typeOf[Konv[_, _]], List(sourceType, targetType)),
+      appliedType(typeOf[Mapper[_, _]], List(sourceType, targetType)),
       silent = true,
       withMacrosDisabled = false
     )
