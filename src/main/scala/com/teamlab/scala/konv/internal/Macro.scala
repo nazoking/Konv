@@ -93,14 +93,21 @@ class Macro(val c: Context) {
       overwrites: Map[c.TermName, c.Tree]
   ): c.Expr[B] = {
     val sources = args.map(SourceInfo.apply)
-    val (pnames, params) = generateParams[B](sources, overwrites, factory.method).unzip
-    val pnameset = pnames.flatten.toSet
-    val sets = sources.filter(pnameset.contains).map(s => q"""val ${s.name} = ${s.tree}""")
-    val ret = if (factory.tree.isType) {
-      q"""{ ..$sets;  new ${factory.tree}(..$params) }"""
-    } else {
-      q"""{ ..$sets;  ${factory.tree}(..$params) }"""
-    }
+    val ret = sources.headOption
+      .flatMap { s =>
+        autoConvert(s.tree, s.tpe, weakTypeOf[B])
+      }
+      .getOrElse {
+        val (pnames, params) = generateParams[B](sources, overwrites, factory.method).unzip
+        val sets = pnames.flatten.toSet.map { s: SourceInfo =>
+          q"""val ${s.name} = ${s.tree}"""
+        }
+        if (factory.tree.isType) {
+          q"""{ ..$sets;  new ${factory.tree}(..$params) }"""
+        } else {
+          q"""{ ..$sets;  ${factory.tree}(..$params) }"""
+        }
+      }
 //    println(ret)
     c.Expr[B](ret)
   }
@@ -176,17 +183,16 @@ class Macro(val c: Context) {
           findSingleValueConstructor(targetType, sourceType)
           /** if exists constructor `new TARGET(SOURCE)` */
             .map(_ => q"new $targetType($source)")
-            .orElse(
-              findSingleValueCaseClassParam(sourceType).flatMap(
-                param =>
-                  /** if `case class SOURCE(TARGET)` then SOURCE.TARGET */
-                  if (param.typeSignature <:< targetType) Some(q"$source.${param.name.toTermName}")
-                  else
-                    findSingleValueConstructor(targetType, param.typeSignature)
-                    /** if `case class SOURCE(PARAM1)` and `new TARGET(SOURCE.PARAM1)` */
-                      .map(_ => q"new $targetType($source.${param.name.toTermName})")
-              )
-            )
+            .orElse {
+              findSingleValueCaseClassParam(sourceType).flatMap { param =>
+                /** if `case class SOURCE(TARGET)` then SOURCE.TARGET */
+                if (param.typeSignature <:< targetType) Some(q"$source.${param.name.toTermName}")
+                else
+                  findSingleValueConstructor(targetType, param.typeSignature)
+                  /** if `case class SOURCE(PARAM1)` and `new TARGET(SOURCE.PARAM1)` */
+                    .map(_ => q"new $targetType($source.${param.name.toTermName})")
+              }
+            }
       )
   def inferImplicitValue(sourceType: c.Type, targetType: c.Type): Option[c.Tree] = {
     val t = c.inferImplicitValue(
@@ -202,7 +208,7 @@ class Macro(val c: Context) {
       .member(c.universe.termNames.CONSTRUCTOR)
       .alternatives
       .find(_.asMethod.paramLists match {
-        case List(List(p)) => p.typeSignature <:< o
+        case List(List(p)) => o <:< p.typeSignature
         case _             => false
       })
   }

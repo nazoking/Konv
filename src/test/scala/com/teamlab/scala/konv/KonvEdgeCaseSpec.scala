@@ -103,6 +103,18 @@ class KonvEdgeCaseSpec extends RefSpec with DiagrammedAssertions {
     def `auto unwrap`(): Unit = {
       assert(From(Target(Target1("1"))).to[Source1] == Source1("1"))
     }
+    def `auto wrap2`(): Unit = {
+      assert(From(Source1("1")).to[Target1] == Target1("1"))
+    }
+    def `auto unwrap2`(): Unit = {
+      assert(From(Target1("1")).to[Source1] == Source1("1"))
+    }
+    def `auto wrap3`(): Unit = {
+      assert(From("2").to[Target1] == Target1("2"))
+    }
+    def `auto unwrap3`(): Unit = {
+      assert(From(Target1("1")).to[String] == "1")
+    }
   }
   object `side effect` {
     def `test side effect`(): Unit = {
@@ -117,7 +129,7 @@ class KonvEdgeCaseSpec extends RefSpec with DiagrammedAssertions {
     }
     def `test underscore`(): Unit = {
       case class Target(a: Int)
-      def test : Target => Target = From(_).to[Target]
+      def test: Target => Target = From(_).to[Target]
       assert(test(Target(10)) == Target(10))
     }
   }

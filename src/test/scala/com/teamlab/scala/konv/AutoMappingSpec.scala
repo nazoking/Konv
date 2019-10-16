@@ -50,7 +50,7 @@ class AutomapperSpec extends RefSpec with Matchers with TestData with TestKonvs 
       assert(From(source).to[TargetSubset] === TargetSubset(targetData))
     }
 //    def `map a case class to another case class by setting None for fields not present in the first class`(): Unit = {
-//      implicit val v2 = Konv.caseClass[SourceClass, TargetWithOptionalUnexpectedField]
+//      implicit val v2 = Konv.mapper[SourceClass, TargetWithOptionalUnexpectedField]
 //      From(source).to[TargetWithOptionalUnexpectedField] === TargetWithOptionalUnexpectedField(targetData, None)
 //    }
 //
