@@ -6,7 +6,8 @@ scalaVersion := "2.12.10"
 
 libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value % Test
 libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % Test
+libraryDependencies += "com.lihaoyi" %% "utest" % "0.7.1" % Test
+testFrameworks += new TestFramework("utest.runner.Framework")
 
 scalacOptions in ThisBuild ++= Seq(
   "-deprecation",

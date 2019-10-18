@@ -1,8 +1,6 @@
 package com.teamlab.scala.konv
 
-import org.scalatest._
-import org.scalatest.exceptions.TestFailedException
-import org.scalatest.refspec.RefSpec
+import utest._
 
 trait TestKonvs extends Defaults {
   implicit val dataC = Mapper.mapper[SourceData, TargetData]
@@ -12,165 +10,167 @@ trait TestKonvs extends Defaults {
   implicit val pClassAC = Mapper.mapper[SourcePolymorphicClassA, TargetPolymorphicClassA]
   implicit val pClassBC = Mapper.mapper[SourcePolymorphicClassB, TargetPolymorphicClassB]
 }
-class AutomapperSpec extends RefSpec with Matchers with TestData with TestKonvs {
-  object `automap ` {
+object AutomapperSpec extends TestSuite with TestData with TestKonvs {
+  def tests = Tests {
+    test("automap ") {
 
-    def `map a case class to another case class as expected`(): Unit = {
-      assert(From(source).to[TargetClass] === target)
-    }
+      test("map a case class to another case class as expected") {
+        From(source).to[TargetClass] ==> target
+      }
 
-    def `map a case class with missing optionals to another case class as expected`(): Unit = {
-      val sourceWithMissingOptionals = SourceClass(
-        "field",
-        sourceData,
-        sourceValues,
-        sourceDatas,
-        None,
-        None,
-        sourceMap,
-        sourceMapWithData,
-        sourceLevel1
-      )
-      val targetWithMissingOptionals = TargetClass(
-        "field",
-        targetData,
-        targetValues,
-        targetDatas,
-        None,
-        None,
-        targetMap,
-        targetMapWithData,
-        targetLevel1
-      )
-      assert(From(sourceWithMissingOptionals).to[TargetClass] === targetWithMissingOptionals)
-    }
+      test("map a case class with missing optionals to another case class as expected") {
+        val sourceWithMissingOptionals = SourceClass(
+          "field",
+          sourceData,
+          sourceValues,
+          sourceDatas,
+          None,
+          None,
+          sourceMap,
+          sourceMapWithData,
+          sourceLevel1
+        )
+        val targetWithMissingOptionals = TargetClass(
+          "field",
+          targetData,
+          targetValues,
+          targetDatas,
+          None,
+          None,
+          targetMap,
+          targetMapWithData,
+          targetLevel1
+        )
+        From(sourceWithMissingOptionals).to[TargetClass] ==> targetWithMissingOptionals
+      }
 
-    def `map a case class to another case class with a subset of fields`(): Unit = {
-//      implicit val v = Konv.mapper[SourceClass, TargetSubset]
-      assert(From(source).to[TargetSubset] === TargetSubset(targetData))
-    }
-//    def `map a case class to another case class by setting None for fields not present in the first class`(): Unit = {
-//      implicit val v2 = Konv.mapper[SourceClass, TargetWithOptionalUnexpectedField]
-//      From(source).to[TargetWithOptionalUnexpectedField] === TargetWithOptionalUnexpectedField(targetData, None)
-//    }
-//
-//    def `map a case class to another case class by setting an empty iterable for fields not present in the first class`(): Unit ={
-//      implicit val v2 = Konv.caseClass[SourceClass, TargetWithUnexpectedList]
-//      From(source).to[TargetWithUnexpectedList] === TargetWithUnexpectedList(targetData, List.empty)
-//    }
-//
-//    def `map a case class to another case class by setting an empty map for fields not present in the first class`(): Unit ={
-//      From(source).to[TargetWithUnexpectedMap] === TargetWithUnexpectedMap(targetData, Map.empty)
-//    }
+      test("map a case class to another case class with a subset of fields") {
+        //      implicit val v = Konv.mapper[SourceClass, TargetSubset]
+        From(source).to[TargetSubset] ==> TargetSubset(targetData)
+      }
+      //    test("map a case class to another case class by setting None for fields not present in the first class"){
+      //      implicit val v2 = Konv.mapper[SourceClass, TargetWithOptionalUnexpectedField]
+      //      From(source).to[TargetWithOptionalUnexpectedField] === TargetWithOptionalUnexpectedField(targetData, None)
+      //    }
+      //
+      //    test("map a case class to another case class by setting an empty iterable for fields not present in the first class"){
+      //      implicit val v2 = Konv.caseClass[SourceClass, TargetWithUnexpectedList]
+      //      From(source).to[TargetWithUnexpectedList] === TargetWithUnexpectedList(targetData, List.empty)
+      //    }
+      //
+      //    test("map a case class to another case class by setting an empty map for fields not present in the first class"){
+      //      From(source).to[TargetWithUnexpectedMap] === TargetWithUnexpectedMap(targetData, Map.empty)
+      //    }
 
-    def `map a case class to another case class by setting the default value for fields not present in the first class`()
-        : Unit = {
-//      implicit val v2 = Konv.mapper[SourceClass, TargetWithDefaultValue]
-      assert(From(source).to[TargetWithDefaultValue] === TargetWithDefaultValue(targetData))
-    }
+      test(
+        "map a case class to another case class by setting the default value for fields not present in the first class"
+      ) {
+        //      implicit val v2 = Konv.mapper[SourceClass, TargetWithDefaultValue]
+        From(source).to[TargetWithDefaultValue] ==> TargetWithDefaultValue(targetData)
+      }
 
-    def `map a case class to another case class when using a qualified type`(): Unit = {
-//      implicit val v1 = Konv.mapper[SomeObject.Data, AnotherObject.Data]
-//      implicit val v2 = Konv.mapper[SomeObject.Source, AnotherObject.Target]
-      assert(
+      test("map a case class to another case class when using a qualified type") {
+        //      implicit val v1 = Konv.mapper[SomeObject.Data, AnotherObject.Data]
+        //      implicit val v2 = Konv.mapper[SomeObject.Source, AnotherObject.Target]
         From(SomeObject.Source("value", SomeObject.Data(1)))
-          .to[AnotherObject.Target] === AnotherObject.Target("value", AnotherObject.Data(1))
-      )
-    }
+          .to[AnotherObject.Target] ==> AnotherObject.Target("value", AnotherObject.Data(1))
+      }
 
-    def `not compile if mapping cannot be generated`(): Unit = {
-      assert(intercept[TestFailedException](assertCompiles("""
+      test("not compile if mapping cannot be generated") {
+        assert(compileError("""
         From(source).to[TargetWithUnexpectedField]
-      """)).getMessage().contains("not enough arguments"))
+      """).msg.contains("not enough arguments"))
+      }
     }
-  }
 
-  object `set ` {
-    val values = source.list
-    def sum(values: List[Int]) = values.sum
-    def `map a case class to another case class allowing dynamic fields mapping`(): Unit = {
-      assert(
+    test("set") {
+      val values = source.list
+
+      def sum(values: List[Int]) = values.sum
+
+      test("map a case class to another case class allowing dynamic fields mapping") {
         From(source, renamedField = source.field, total = sum(values))
-          .to[TargetWithDynamicMapping] === TargetWithDynamicMapping("field", targetData, 6)
-      )
-    }
+          .to[TargetWithDynamicMapping] ==> TargetWithDynamicMapping("field", targetData, 6)
+      }
 
-    def `not compile if missing mappings have not been provided in the dynamic mapping`(): Unit = {
-      assert(intercept[TestFailedException](assertCompiles("""
+      test("not compile if missing mappings have not been provided in the dynamic mapping") {
+        assert(compileError("""
       From(source,
         renamedField = source.field
       ).to[TargetWithDynamicMapping]
-      """)).getMessage().contains("not enough arguments"))
-    }
+      """).msg.contains("not enough arguments"))
+      }
 
-    def `not compile if typechecking fails when assigning a field dynamically`(): Unit = {
-      assert(intercept[TestFailedException](assertCompiles("""
+      test("not compile if typechecking fails when assigning a field dynamically") {
+        assert(compileError("""
       From(source,
         renamedField = 10,
         total = "value"
       ).to[TargetWithDynamicMapping]
-      """)).getMessage().contains("type mismatch"))
-    }
-    def `not compile if parems too many`(): Unit = {
-      assert(intercept[TestFailedException](assertCompiles("""
+      """).msg.contains("type mismatch"))
+      }
+      test("not compile if parems too many") {
+        assert(compileError("""
       From(source,
         renamedField = source.field,
         total = sum(values),
         aaa = 100
       ).to[TargetWithDynamicMapping]
-      """)).getMessage().contains("is not in "))
-    }
-  }
-
-  object `automap using generated implicit mappings` {
-    def `map a case class to another case class as expected using the manually generated implicit mappings`(): Unit = {
-//      implicit val mapping = Konv.caseClass[SourceClass, TargetClass]
-      assert(From(source).to[TargetClass] === target)
-    }
-
-    def `map a case class to another case class as expected using the manually generated implicit mappings and be able to disambiguate between multiple implicit mappings`()
-        : Unit = {
-//      implicit val mapping = Konv.caseClass[SourceClass, TargetClass]
-//      implicit val mappingForSubset = Konv.caseClass[SourceClass, TargetSubset]
-      assert(From(source).to[TargetClass] === target)
-    }
-  }
-
-  object `automap polymorphic types` {
-    def mapPolymorphicTrait(source: SourcePolymorphicTrait): TargetPolymorphicTrait = source match {
-      case a: SourcePolymorphicClassA => From(a).to[TargetPolymorphicClassA]
-      case b: SourcePolymorphicClassB => From(b).to[TargetPolymorphicClassB]
-    }
-
-    def `map a polymorphic type field`(): Unit = {
-      implicit val conversion = Mapper(mapPolymorphicTrait)
-//      implicit val conversion2 = Konv.mapper[SourcePolymorphicClass, TargetPolymorphicClass]
-      assert(From(sourcePolymorphicA).to[TargetPolymorphicClass] === targetPolymorphicA)
-      assert(From(sourcePolymorphicB).to[TargetPolymorphicClass] === targetPolymorphicB)
-    }
-
-    def `throw an exception for an unmapped polymorphic type`(): Unit = {
-      implicit val conversion = Mapper(mapPolymorphicTrait)
-//      implicit val conversion2 = Konv.mapper[SourcePolymorphicClass, TargetPolymorphicClass]
-      assertThrows[MatchError] {
-        From(sourcePolymorphicC).to[TargetPolymorphicClass]
+      """).msg.contains("is not in "))
       }
     }
 
-    def `not compile without an implicit conversion in scope`(): Unit = {
-      assert(intercept[TestFailedException](assertCompiles("""
+    test("automap using generated implicit mappings") {
+      test("map a case class to another case class as expected using the manually generated implicit mappings") {
+        //      implicit val mapping = Konv.caseClass[SourceClass, TargetClass]
+        From(source).to[TargetClass] ==> target
+      }
+
+      test(
+        "map a case class to another case class as expected using the manually generated implicit mappings and be able to disambiguate between multiple implicit mappings"
+      ) {
+        //      implicit val mapping = Konv.caseClass[SourceClass, TargetClass]
+        //      implicit val mappingForSubset = Konv.caseClass[SourceClass, TargetSubset]
+        From(source).to[TargetClass] ==> target
+      }
+    }
+
+    test("automap polymorphic types") {
+      def mapPolymorphicTrait(source: SourcePolymorphicTrait): TargetPolymorphicTrait = source match {
+        case a: SourcePolymorphicClassA => From(a).to[TargetPolymorphicClassA]
+        case b: SourcePolymorphicClassB => From(b).to[TargetPolymorphicClassB]
+      }
+
+      test("map a polymorphic type field") {
+        implicit val conversion = Mapper(mapPolymorphicTrait)
+        //      implicit val conversion2 = Konv.mapper[SourcePolymorphicClass, TargetPolymorphicClass]
+        From(sourcePolymorphicA).to[TargetPolymorphicClass] ==> targetPolymorphicA
+        From(sourcePolymorphicB).to[TargetPolymorphicClass] ==> targetPolymorphicB
+      }
+
+      test("throw an exception for an unmapped polymorphic type") {
+        implicit val conversion = Mapper(mapPolymorphicTrait)
+        //      implicit val conversion2 = Konv.mapper[SourcePolymorphicClass, TargetPolymorphicClass]
+        intercept[MatchError] {
+          From(sourcePolymorphicC).to[TargetPolymorphicClass]
+        }
+      }
+
+      test("not compile without an implicit conversion in scope") {
+        assert(compileError("""
       From(sourcePolymorphicA).to[TargetPolymorphicClass]
-      """)).getMessage().contains("type mismatch"))
-    }
-
-    def `useing implicit mapping`(): Unit = {
-      implicit val implicitMapping = Mapper[SourceClass, TargetWithDynamicMapping] { a: SourceClass =>
-        From(a, renamedField = a.field, total = a.list.sum).to[TargetWithDynamicMapping]
+      """).msg.contains("type mismatch"))
       }
-//      implicit val conversion2 = Konv.mapper[SourceClass1, TargetClass1]
-      assert(implicitMapping.map(sourceClass1.value) === targetClass1.value)
-      //      """ Konv.from(sourceClass1).to[TargetClass1] === targetClass1 """ shouldNot compile
-      assert(From(sourceClass1).to[TargetClass1] === targetClass1)
+
+      test("useing implicit mapping") {
+        implicit val implicitMapping = Mapper[SourceClass, TargetWithDynamicMapping] { a: SourceClass =>
+          From(a, renamedField = a.field, total = a.list.sum).to[TargetWithDynamicMapping]
+        }
+        //      implicit val conversion2 = Konv.mapper[SourceClass1, TargetClass1]
+        implicitMapping.map(sourceClass1.value) ==> targetClass1.value
+        //      """ Konv.from(sourceClass1).to[TargetClass1] ==> targetClass1 """ shouldNot compile
+        From(sourceClass1).to[TargetClass1] ==> targetClass1
+      }
     }
   }
 }
