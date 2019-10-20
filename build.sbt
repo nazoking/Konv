@@ -2,7 +2,9 @@ name := "macro-test"
 
 version := "0.1"
 
-scalaVersion := "2.12.10"
+//scalaVersion := "2.12.10"
+scalaVersion := "2.13.0"
+crossScalaVersions := Seq("2.12.10", "2.13.0")
 
 libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value % Test
 libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value

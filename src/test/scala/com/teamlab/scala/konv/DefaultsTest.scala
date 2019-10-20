@@ -3,7 +3,6 @@ package com.teamlab.scala.konv
 import utest._
 
 object DefaultsTest extends TestSuite with Defaults {
-  import DefaultsTest._
   def tests = Tests {
     " map" - {
       assert(implicitly[Mapper[Map[String, Int], Map[String, Long]]].map(Map("1" -> 1)) == Map("1" -> 1L))
