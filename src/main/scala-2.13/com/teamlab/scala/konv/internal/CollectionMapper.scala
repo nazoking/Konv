@@ -7,13 +7,13 @@ import scala.collection.IterableFactory
 import scala.language.higherKinds
 import scala.reflect.runtime.{currentMirror, universe}
 
-trait CollectionKonv {
+trait CollectionMapper {
 
   /** rule. convert iterable type */
-  implicit def default_listTo[X, Y[X] <: Iterable[X], Z[X] <: Iterable[X]](
+  implicit def default_listTo[A, Y[A] <: Iterable[A], Z[A] <: Iterable[A]](
       implicit w: universe.WeakTypeTag[Z[_]],
-      ev: Y[X] <:!< Z[X]
-  ): Mapper[Y[X], Z[X]] = {
+      ev: Y[_] <:!< Z[_]
+  ): Mapper[Y[A], Z[A]] = {
     val iterableFactory =
       currentMirror.reflectModule(w.tpe.typeSymbol.companion.asModule).instance.asInstanceOf[IterableFactory[Z]]
     i => i.to(iterableFactory)
@@ -21,19 +21,20 @@ trait CollectionKonv {
 
   /** rule. convert iterable items */
   implicit def default_iterable[X, Y, CX[X] <: Iterable[X], CY[Y] <: Iterable[Y]](
-      implicit cmap: Mapper[Iterable[Y], CY[Y]],
-      imap: Mapper[X, Y],
-      ev: CX[X] <:!< CY[Y]
+      implicit cMap: Mapper[Iterable[Y], CY[Y]],
+      eMap: Mapper[X, Y],
+      ev1: CX[X] <:!< CY[Y],
+      ev2: X <:!< Y
   ): Mapper[CX[X], CY[Y]] = Mapper { a: CX[X] =>
-    cmap.map(a.map(imap.map))
+    cMap.map(a.map(eMap.map))
   }
 
   /** rule. convert map values */
   implicit def default_mapValues[A, B, X](
-      implicit imap: Mapper[A, B],
+      implicit iMap: Mapper[A, B],
       ev1: Map[X, A] <:!< Map[X, B],
       ev2: A <:!< B
   ): Mapper[Map[X, A], Map[X, B]] = Mapper { a: Map[X, A] =>
-    a.view.mapValues(imap.map).toMap
+    a.view.mapValues(iMap.map).toMap
   }
 }

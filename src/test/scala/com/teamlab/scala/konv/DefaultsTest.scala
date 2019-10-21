@@ -15,8 +15,8 @@ object DefaultsTest extends TestSuite with Defaults {
     }
     test("now low") {
       compileError("""
-    implicitly[Konv[Base, Ext]]
-    """)
+    implicitly[Mapper[Base, Ext]]
+    """).check("", "could not find implicit value for parameter")
     }
     test("list same item") {
       implicitly[Mapper[List[Int], Set[Int]]].map(List(1, 2)) ==> Set(1, 2)

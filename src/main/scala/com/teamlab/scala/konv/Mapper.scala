@@ -1,6 +1,6 @@
 package com.teamlab.scala.konv
 
-import com.teamlab.scala.konv.internal.CollectionKonv
+import com.teamlab.scala.konv.internal.CollectionMapper
 
 import scala.language.experimental.macros
 import com.teamlab.scala.konv.internal.NotSub.<:!<
@@ -15,7 +15,7 @@ object Mapper {
   /** auto generate Konv[A, B]{ a:A => Konv.to[B].by(a) }  */
   def mapper[A, B]: Mapper[A, B] = macro internal.Macro.generateMappingImpl[A, B]
 
-  trait LowPriorityDefaults extends CollectionKonv {
+  trait LowPriorityDefaults extends CollectionMapper {
 
     /** rule. convert option item */
     implicit def default_optionMap[A, B](

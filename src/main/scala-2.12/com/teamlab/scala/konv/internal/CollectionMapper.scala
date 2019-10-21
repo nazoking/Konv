@@ -6,7 +6,7 @@ import com.teamlab.scala.konv.internal.NotSub.<:!<
 
 import scala.collection.generic.CanBuildFrom
 
-trait CollectionKonv {
+trait CollectionMapper {
 
   /** rule. convert iterable type */
   implicit def default_listTo[C1, X, Col[_]](
