@@ -92,5 +92,7 @@ Related Projects
   * http://jmapper-framework.github.io/jmapper-core/
   * https://github.com/bfil/scala-automapper Hassle-free case class mapping!
   * https://scalalandio.github.io/chimney/ Scala library for boilerplate-free data transformations
+  * https://github.com/kailuowang/henkan A small library for converting between case classes.
+
 
 
