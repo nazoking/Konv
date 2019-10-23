@@ -95,7 +95,13 @@ class Macro(val c: Context) {
     val sources = args.map(SourceInfo.apply)
     val ret = sources.headOption
       .flatMap { s =>
-        autoConvert(s.tree, s.tpe, weakTypeOf[B])
+        val ret = autoConvert(s.tree, s.tpe, weakTypeOf[B])
+        if(ret.isDefined){
+          (args.drop(1) ++ overwrites.toSeq.map(_._2)).headOption.foreach{ op =>
+            throw new MacroError(s"arguments use only first", op.pos)
+          }
+        }
+        ret
       }
       .getOrElse {
         val (pnames, params) = generateParams[B](sources, overwrites, factory.method).unzip
@@ -148,11 +154,13 @@ class Macro(val c: Context) {
         }
       }
       .filterNot(_._2.isEmpty)
-    if (dparams.nonEmpty)
+    if (dparams.nonEmpty) {
+      val dp = dparams.map(d => s"${d._1}:${d._2.tpe}").mkString(",")
       throw new MacroError(
-        s"${dparams.keys} is not in ${factory.fullName}",
+        s"${dp} is not in ${factory.fullName}(${params.map(p => s"${p.name}:${p.typeSignature}").mkString(", ")})",
         dparams.head._2.pos
       )
+    }
     ret
   }
   def findSourceField(sources: Seq[SourceInfo], name: TermName): Option[(SourceInfo, c.universe.MethodSymbol)] =
