@@ -6,4 +6,7 @@ object NotSub {
   implicit def nsub[A, B]: A <:!< B = `_<:!<`.asInstanceOf[<:!<[A, B]]
   implicit def nsubAmbig1[A, B >: A]: A <:!< B = sys.error("Unexpected call")
   implicit def nsubAmbig2[A, B >: A]: A <:!< B = sys.error("Unexpected call")
+
+  type Not[A] = A => Nothing
+  type Or[A, B] = Not[Not[A] with Not[B]]
 }

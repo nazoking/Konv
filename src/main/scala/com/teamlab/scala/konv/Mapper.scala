@@ -3,7 +3,7 @@ package com.teamlab.scala.konv
 import com.teamlab.scala.konv.internal.CollectionMapper
 
 import scala.language.experimental.macros
-import com.teamlab.scala.konv.internal.NotSub.<:!<
+import com.teamlab.scala.konv.internal.NotSub._
 
 trait Mapper[-A, B] { def map(a: A): B }
 

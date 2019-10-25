@@ -16,28 +16,24 @@ Usage
 You can use `From(xx).to[B]`.
 
 ```scala
-// from
-case class User(firstName: String, lastName:String, age:Int, email:String)
+case class DomainUser(firstName: String, lastName:String, age:Int, email:String)
+case class ApiUser(name: String, age:Int, email:String)
 
-// to
-case class UserForApi(name: String, age:Int, email:String)
-
-val user = User("taro", "suzuki", 12, "xxx@example.com")
+val user = DomainUser("taro", "suzuki", 12, "xxx@example.com")
 
 import com.teamlab.scala.konv.From
-
-From(user, name=s"${user.firstName} ${user.lastName}").to[UserForApi]
+From(user, name=s"${user.firstName} ${user.lastName}").to[ApiUser]
 // => UserForApi("taro suzuki", 12, "xxx@example.com")
 ```
 
-auto mapping parameters from source object same name fields. or using named parameter of `by` method.
+auto mapping parameters from source object same name fields. or using named parameter.
 
   1. `From` set source and generate.
      - `From(sourceObject)`
      - `From(sourceObject, param1=overwrite)` overwrite parameters.
-        - use for parameter rename
-        - use for parameter type change
-        - use for some calculation
+        - for parameter rename
+        - for parameter type change
+        - for any calculation
   2. `to` set target, and get
      - `to[TYPE]` generate by primary constructor
      - `to(Factory.apply _)` generate by factory method
@@ -61,7 +57,7 @@ case class Target(value:T1)
 
 {
   // create module type class
-  implicit val convert = Mapper[S1, T1](s: S1 => T1(s.field.toString))
+  implicit val convert: Mapper[S1, T1] = { s: S1 => T1(s.field.toString) }
 
   // From.to use implicit Konv trait if source property class differ to target parameter class
   From(Source(S1(10))).to(Target)
@@ -71,7 +67,7 @@ case class Target(value:T1)
 
 and you can use default converters defined on `Defaults`.
 
-Using Rules
+Convert Rules
 -----------
 
   1. overwrite parameters if exists

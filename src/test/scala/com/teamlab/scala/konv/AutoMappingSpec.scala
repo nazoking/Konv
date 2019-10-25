@@ -79,7 +79,7 @@ object AutomapperSpec extends TestSuite with TestData with TestKonvs {
       test("not compile if mapping cannot be generated") {
         assert(compileError("""
         From(source).to[TargetWithUnexpectedField]
-      """).msg.contains("not enough arguments"))
+      """).msg.contains("unspecified value parameter"))
       }
     }
 
@@ -98,7 +98,7 @@ object AutomapperSpec extends TestSuite with TestData with TestKonvs {
       From(source,
         renamedField = source.field
       ).to[TargetWithDynamicMapping]
-      """).msg.contains("not enough arguments"))
+      """).msg.contains("unspecified value parameter"))
       }
 
       test("not compile if typechecking fails when assigning a field dynamically") {
@@ -110,13 +110,13 @@ object AutomapperSpec extends TestSuite with TestData with TestKonvs {
       """).msg.contains("type mismatch"))
       }
       test("not compile if parems too many") {
-        assert(compileError("""
-      From(source,
-        renamedField = source.field,
-        total = sum(values),
-        aaa = 100
-      ).to[TargetWithDynamicMapping]
-      """).msg.contains("is not in "))
+        assert(
+          compileError(
+            """
+        From(source, renamedField = source.field, total = sum(values), aaa = 100).to[TargetWithDynamicMapping]
+      """
+          ).msg.contains("unused parameter")
+        )
       }
     }
 
@@ -158,8 +158,8 @@ object AutomapperSpec extends TestSuite with TestData with TestKonvs {
 
       test("not compile without an implicit conversion in scope") {
         assert(compileError("""
-      From(sourcePolymorphicA).to[TargetPolymorphicClass]
-      """).msg.contains("type mismatch"))
+        From(sourcePolymorphicA).to[TargetPolymorphicClass]
+      """).msg.contains("unmatched type found"))
       }
 
       test("useing implicit mapping") {

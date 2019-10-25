@@ -7,6 +7,7 @@ import com.teamlab.scala.konv.{From, Mapper}
 
 class Macro(val c: Context) {
   import c.universe._
+  val pkg = q"com.teamlab.scala.konv"
   private class MacroError(message: String, var pos: Option[Pos] = None) extends Exception(message) {
     def this(message: String, pos: Pos) = this(message, Some(pos))
   }
@@ -30,8 +31,8 @@ class Macro(val c: Context) {
 //      q"to[$targetType]"
 //    }
     //    println(q"""Mapper[$sourceType, $targetType]{ a:$sourceType => $to.by(a) }""")
-    c.Expr(q"""com.teamlab.scala.konv.Mapper[$sourceType, $targetType]{
-         a:$sourceType => com.teamlab.scala.konv.From(a).to[$targetType] }""")
+    c.Expr(q"""$pkg.Mapper[$sourceType, $targetType]{
+         from:$sourceType => $pkg.From(from).to[$targetType] }""")
   }
   case class SourceInfo(tree: c.Tree, tpe: c.Type, name: c.TermName)
   object SourceInfo {
@@ -41,19 +42,8 @@ class Macro(val c: Context) {
   case class Factory(tree: Tree, method: MethodSymbol)
   def buildByConstructor[A: c.WeakTypeTag]: c.Expr[A] = macroErrorGuard {
     val typ = weakTypeOf[A]
-    val constructor = typ.member(termNames.CONSTRUCTOR)
-    val ftr = constructor.alternatives.filter(_.asMethod.isPublic) match {
-      case head :: Nil => Factory(q"$typ", head.asMethod)
-      case Nil         => c.abort(c.enclosingPosition, s"${typ} has not public constructor")
-      case list =>
-        list.find(_.asMethod.isPrimaryConstructor) match {
-          case Some(cst) => Factory(q"$typ", cst.asMethod)
-          case None =>
-            c.abort(c.enclosingPosition, s"${typ} has not primary constructor. ${list.size} constructors exists")
-        }
-    }
     val (args, overwrites) = findArs(c.prefix.tree)
-    by(ftr, args, overwrites.toMap)
+    by(getConstructorFactory(typ), args, overwrites.toMap)
   }
   def buildByFactory[A: c.WeakTypeTag](factory: c.Tree): c.Expr[A] =
     macroErrorGuard {
@@ -65,7 +55,7 @@ class Macro(val c: Context) {
           Factory(obj, method.asMethod)
       }
       val (args, overwrites) = findArs(c.prefix.tree)
-      by(ftr, args, overwrites.toMap)
+      by(Right(ftr), args, overwrites.toMap)
     }
   private def findArs(
       prefix: c.Tree
@@ -88,7 +78,7 @@ class Macro(val c: Context) {
       )
 
   private def by[B: c.WeakTypeTag](
-      factory: Factory,
+      factory: Either[Exception, Factory],
       args: Seq[c.Tree],
       overwrites: Map[c.TermName, c.Tree]
   ): c.Expr[B] = {
@@ -96,72 +86,124 @@ class Macro(val c: Context) {
     val ret = sources.headOption
       .flatMap { s =>
         val ret = autoConvert(s.tree, s.tpe, weakTypeOf[B])
-        if(ret.isDefined){
-          (args.drop(1) ++ overwrites.toSeq.map(_._2)).headOption.foreach{ op =>
+        if (ret.isDefined) {
+          (args.drop(1) ++ overwrites.toSeq.map(_._2)).headOption.foreach { op =>
             throw new MacroError(s"arguments use only first", op.pos)
           }
         }
         ret
       }
       .getOrElse {
-        val (pnames, params) = generateParams[B](sources, overwrites, factory.method).unzip
-        val sets = pnames.flatten.toSet.map { s: SourceInfo =>
-          q"""val ${s.name} = ${s.tree}"""
-        }
-        if (factory.tree.isType) {
-          q"""{ ..$sets;  new ${factory.tree}(..$params) }"""
-        } else {
-          q"""{ ..$sets;  ${factory.tree}(..$params) }"""
+        factory match {
+          case Right(fct) =>
+            val px = FactoryParameters(weakTypeOf[B], fct.tree, fct.method, sources, overwrites)
+            q"""{ ..${px.parameterNameDefines}; ${px.callTree()} }"""
+          case Left(err) => throw err
         }
       }
 //    println(ret)
     c.Expr[B](ret)
   }
 
+  private def getConstructorFactory(typ: c.Type) = {
+    val constructor = typ.member(termNames.CONSTRUCTOR)
+    constructor.alternatives.filter(_.asMethod.isPublic) match {
+      case head :: Nil => Right(Factory(q"$typ", head.asMethod))
+      case Nil         => Left(new MacroError(s"${typ} has not public constructor"))
+      case list =>
+        list.find(_.asMethod.isPrimaryConstructor) match {
+          case Some(cst) => Right(Factory(q"$typ", cst.asMethod))
+          case None =>
+            Left(new MacroError(s"${typ} has not primary constructor. ${list.size} constructors exists"))
+        }
+    }
+  }
   private def literalString: PartialFunction[c.Tree, String] = {
     case Literal(Constant(str: String)) => str
   }
 
-  private def generateParams[B: WeakTypeTag](
+  case class FactoryParameters(
+      targetType: c.Type,
+      factoryTree: c.Tree,
+      factory: MethodSymbol,
       sources: Seq[SourceInfo],
-      overwrites: Map[c.TermName, c.Tree],
-      factory: MethodSymbol
-  ): List[(Option[SourceInfo], c.Tree)] = {
-    val params = factory.paramLists.head
-    val dparams = scala.collection.mutable.Map(overwrites.toSeq: _*)
-    val ret = params
-      .map { parameter =>
-        val name = parameter.name.toTermName
-        dparams.get(name) match {
-          case Some(value) =>
-            dparams.remove(name)
-            None -> q"$name = $value"
-          case None =>
-            findSourceField(sources, name) match {
-              case None =>
-                if (parameter.asTerm.isParamWithDefault) None -> q""
-                else
-                  throw new MacroError(
-                    s"not enough arguments for ${factory.fullName} Unspecified value parameter $name:${parameter.typeSignature}"
-                  )
-              case Some((source, method)) =>
-                val tep = weakTypeOf[B]
-                val pt = parameter.typeSignature.asSeenFrom(tep, tep.typeSymbol.asClass)
-                val sourceType = method.returnType.asSeenFrom(source.tpe, source.tpe.typeSymbol.asClass)
-                Some(source) -> q"""${parameter} = ${autoConvert(q"${source.name}.$name", sourceType, pt)
-                  .getOrElse(q"${source.name}.$name:$pt")}"""
-            }
-        }
-      }
-      .filterNot(_._2.isEmpty)
-    if (dparams.nonEmpty) {
-      val dp = dparams.map(d => s"${d._1}:${d._2.tpe}").mkString(",")
-      throw new MacroError(
-        s"${dp} is not in ${factory.fullName}(${params.map(p => s"${p.name}:${p.typeSignature}").mkString(", ")})",
-        dparams.head._2.pos
-      )
+      overwrites: Map[c.TermName, c.Tree] = Map.empty
+  ) {
+    case class Param(param: c.Symbol) {
+      def name = param.name.toTermName
+      def tpe = param.typeSignature.asSeenFrom(targetType, targetType.typeSymbol.asClass)
+      def hasDefault = param.asTerm.isParamWithDefault
     }
-    ret
+    sealed trait Parameter {
+      def param: Param
+      def tree: c.Tree = EmptyTree
+    }
+    trait WithSource {
+      def source: SourceInfo
+    }
+    case class Overwrite(param: Param, overwrite: c.Tree) extends Parameter {
+      override def tree = q"""${param.name.toTermName} = $overwrite"""
+    }
+    case class Use(param: Param, value: c.Tree, source: SourceInfo) extends Parameter with WithSource {
+      override def tree = q"""${param.name.toTermName} = $value"""
+    }
+    case class Default(param: Param) extends Parameter {}
+    case class Unmatched(param: Param, source: SourceInfo, sourceType: c.Type) extends Parameter with WithSource {
+      override def tree = q"""${param.name.toTermName} = ${source.name}.${param.name}"""
+    }
+    case class NotFound(param: Param) extends Parameter {}
+
+    val params: List[Parameter] = factory.paramLists.head
+      .map(Param)
+      .map { parameter =>
+        overwrites.get(parameter.name).map(value => Overwrite(parameter, value)) orElse
+          findSourceField(sources, parameter.name).map {
+            case (source, method) =>
+              val sourceType = method.returnType.asSeenFrom(source.tpe, source.tpe.typeSymbol.asClass)
+              autoConvert(q"${source.name}.${parameter.name}", sourceType, parameter.tpe) match {
+                case Some(v) => Use(parameter, v, source)
+                case None =>
+                  getImplicitConvert(q"${source.name}.${parameter.name}", sourceType, parameter.tpe) match {
+                    case Some(u) => Use(parameter, u, source)
+                    case None    => Unmatched(parameter, source, sourceType)
+                  }
+              }
+          } orElse
+          (if (parameter.hasDefault) Some(Default(parameter)) else None) getOrElse
+          NotFound(parameter)
+      }
+    lazy val errorMessages: List[String] = params.collect {
+      case x: Unmatched =>
+        s"unmatched type found ${x.source.tree}.${x.param.name.toTermName}:${x.sourceType}, required ${x.param.name.toTermName}:${x.param.tpe}"
+      case x: NotFound => s"unspecified value parameter ${x.param.name}:${x.param.tpe}"
+    } ++ unusedOverwrites.toList.map {
+      case (key, tree) => s"unused parameter ${key}=${tree}"
+    }
+    def hasError: Boolean = errorMessages.nonEmpty
+    def unusedOverwrites = {
+      overwrites.removedAll(params.collect { case p: Overwrite => p.param.name })
+    }
+    def factorySig: String =
+      s"${factory.fullName}(${factory.paramLists.head.map(p => s"${p.name}:${p.typeSignature}").mkString(", ")})"
+    def callTree(silent: Boolean = false): c.Tree = {
+      val tree = if (factory.isConstructor) {
+        q""" new $factoryTree(..${params.map(_.tree).filter(_.nonEmpty)}) """
+      } else {
+        q""" $factoryTree(..${params.map(_.tree).filter(_.nonEmpty)}) """
+      }
+      if (!silent && hasError) {
+        var t2 = tree.toString()
+        params.collect { case c: WithSource => c.source }.toSet.foreach { s: SourceInfo =>
+          t2 = t2.replaceAllLiterally(s.name.toString, s.tree.toString)
+        }
+        throw new MacroError(s"cant'convert ${factorySig}\n  ${errorMessages.mkString("\n  ")}\n   in $t2")
+      }
+      tree
+    }
+    def parameterNameDefines: Set[c.Tree] =
+      params.collect { case c: WithSource => c.source }.toSet.map { s: SourceInfo =>
+        q"""val ${s.name} = ${s.tree}"""
+      }
   }
   def findSourceField(sources: Seq[SourceInfo], name: TermName): Option[(SourceInfo, c.universe.MethodSymbol)] =
     (for {
@@ -179,36 +221,67 @@ class Macro(val c: Context) {
       sourceType: c.Type,
       targetType: c.Type
   ): Option[c.Tree] =
-    inferImplicitValue(sourceType, targetType)
-      .map { mapper =>
-        /** if exists `implicit Mapper[SOURCE, TARGET]` */
-        q"$mapper.map($source)"
+    // if exists `implicit Mapper[SOURCE, TARGET]`
+    getImplicitMapperValue(sourceType, targetType).map(mapper => q"$mapper.map($source)") orElse
+      // if exists `implicit Mapper[SOURCE, TARGET]`
+      synthesisMapper(sourceType, targetType).map(mapper => q"$mapper.map($source)") orElse
+      // if is `TARGET extends SOURCE`
+      (if (sourceType <:< targetType) Some(source) else None) orElse
+      getImplicitConvert(source, sourceType, targetType) orElse
+      // if exists constructor `new TARGET(SOURCE)`
+      findSingleValueConstructor(targetType, sourceType).map(_ => q"new $targetType($source)") orElse
+      findSingleValueCaseClassParam(sourceType).flatMap { param =>
+        // if `case class SOURCE(TARGET)` then SOURCE.TARGET
+        (if (param.typeSignature <:< targetType) Some(q"$source.${param.name.toTermName}") else None) orElse
+          // if `case class SOURCE(PARAM1)` and `new TARGET(SOURCE.PARAM1)`
+          findSingleValueConstructor(targetType, param.typeSignature)
+            .map(_ => q"new $targetType($source.${param.name.toTermName})")
       }
-      .orElse(
-        /** if is `TARGET extends SOURCE` */
-        if (sourceType <:< targetType) Some(q"$source")
-        else
-          findSingleValueConstructor(targetType, sourceType)
-          /** if exists constructor `new TARGET(SOURCE)` */
-            .map(_ => q"new $targetType($source)")
-            .orElse {
-              findSingleValueCaseClassParam(sourceType).flatMap { param =>
-                /** if `case class SOURCE(TARGET)` then SOURCE.TARGET */
-                if (param.typeSignature <:< targetType) Some(q"$source.${param.name.toTermName}")
-                else
-                  findSingleValueConstructor(targetType, param.typeSignature)
-                  /** if `case class SOURCE(PARAM1)` and `new TARGET(SOURCE.PARAM1)` */
-                    .map(_ => q"new $targetType($source.${param.name.toTermName})")
-              }
-            }
-      )
-  def inferImplicitValue(sourceType: c.Type, targetType: c.Type): Option[c.Tree] = {
+  def getImplicitMapperValue(sourceType: c.Type, targetType: c.Type): Option[c.Tree] = {
     val t = c.inferImplicitValue(
       appliedType(typeOf[Mapper[_, _]], List(sourceType, targetType)),
       silent = true,
       withMacrosDisabled = false
     )
     if (t.isEmpty) None else Some(t)
+  }
+  def getImplicitConvert(source: c.Tree, sourceType: c.Type, targetType: c.Type): Option[c.Tree] = {
+    val t = c.inferImplicitView(source, sourceType, targetType, silent = true)
+    if (t.isEmpty) None else Some(q"$t($source)")
+  }
+  def synthesisMapper(sourceType: c.Type, targetType: c.Type): Option[c.Tree] = {
+    val pName = TermName(c.freshName())
+    val pNameTree = q"$pName"
+    val clauses = knownDirectSubclasses(sourceType).toSeq.map { sub =>
+      autoConvert(pNameTree, sub.asType.toType, targetType)
+        .orElse {
+          knownDirectSubclasses(targetType).find(_.name == sub.name).flatMap { ts =>
+            autoConvert(pNameTree, sub.asType.toType, ts.asType.toType).orElse {
+              getConstructorFactory(ts.asType.toType).right.toOption.flatMap { f =>
+                val fParams =
+                  FactoryParameters(
+                    ts.asType.toType,
+                    f.tree,
+                    f.method,
+                    Seq(SourceInfo(pNameTree, sub.asType.toType, pName))
+                  )
+                if (!fParams.hasError) Some(fParams.callTree()) else None
+              }
+            }
+          }
+        }
+        .map { tree =>
+          cq""" $pName:${sub.asType.toType} => $tree """
+        }
+    }
+    if (clauses.nonEmpty && clauses.forall(_.isDefined)) {
+      Some(q""" Mapper[$sourceType, $targetType]{ case ..${clauses.flatten} } """)
+    } else None
+  }
+  def knownDirectSubclasses(tpe: c.Type): Set[c.Symbol] = {
+    if (tpe.typeSymbol.isClass && tpe.typeSymbol.asClass.isSealed) {
+      tpe.typeSymbol.asClass.knownDirectSubclasses
+    } else Set.empty
   }
 
   def findSingleValueConstructor(t: c.Type, o: c.Type) = {
