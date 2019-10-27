@@ -109,12 +109,13 @@ class Macro(val c: Context) {
     val constructor = typ.member(termNames.CONSTRUCTOR)
     constructor.alternatives.filter(_.asMethod.isPublic) match {
       case head :: Nil => Right(Factory(q"$typ", head.asMethod))
-      case Nil         => Left(new MacroError(s"${typ} has not public constructor"))
+      case Nil         => Left(new MacroError(s"Cant'convert. ${typ} has not public constructor"))
       case list =>
         list.find(_.asMethod.isPrimaryConstructor) match {
-          case Some(cst) => Right(Factory(q"$typ", cst.asMethod))
+          case Some(cst) =>
+            Right(Factory(q"$typ", cst.asMethod))
           case None =>
-            Left(new MacroError(s"${typ} has not primary constructor. ${list.size} constructors exists"))
+            Left(new MacroError(s"Cant'convert. ${typ} has not primary constructor. ${list.size} constructors exists"))
         }
     }
   }
@@ -142,14 +143,14 @@ class Macro(val c: Context) {
       def source: SourceInfo
     }
     case class Overwrite(param: Param, overwrite: c.Tree) extends Parameter {
-      override def tree = q"""${param.name.toTermName} = $overwrite"""
+      override def tree = q"""${param.name} = $overwrite"""
     }
     case class Use(param: Param, value: c.Tree, source: SourceInfo) extends Parameter with WithSource {
-      override def tree = q"""${param.name.toTermName} = $value"""
+      override def tree = q"""${param.name} = $value"""
     }
     case class Default(param: Param) extends Parameter {}
     case class Unmatched(param: Param, source: SourceInfo, sourceType: c.Type) extends Parameter with WithSource {
-      override def tree = q"""${param.name.toTermName} = ${source.name}.${param.name}"""
+      override def tree = q"""${param.name} = ${source.name}.${param.name}"""
     }
     case class NotFound(param: Param) extends Parameter {}
 
@@ -174,7 +175,7 @@ class Macro(val c: Context) {
       }
     lazy val errorMessages: List[String] = params.collect {
       case x: Unmatched =>
-        s"unmatched type found ${x.source.tree}.${x.param.name.toTermName}:${x.sourceType}, required ${x.param.name.toTermName}:${x.param.tpe}"
+        s"unmatched type found ${x.source.tree}.${x.param.name}:${x.sourceType}, required ${x.param.name}:${x.param.tpe}"
       case x: NotFound => s"unspecified value parameter ${x.param.name}:${x.param.tpe}"
     } ++ unusedOverwrites.toList.map {
       case (key, tree) => s"unused parameter ${key}=${tree}"
@@ -196,7 +197,7 @@ class Macro(val c: Context) {
         params.collect { case c: WithSource => c.source }.toSet.foreach { s: SourceInfo =>
           t2 = t2.replaceAllLiterally(s.name.toString, s.tree.toString)
         }
-        throw new MacroError(s"cant'convert ${factorySig}\n  ${errorMessages.mkString("\n  ")}\n   in $t2")
+        throw new MacroError(s"Cant'convert ${factorySig}\n  ${errorMessages.mkString("\n  ")}\n   in $t2")
       }
       tree
     }
@@ -275,7 +276,7 @@ class Macro(val c: Context) {
         }
     }
     if (clauses.nonEmpty && clauses.forall(_.isDefined)) {
-      Some(q""" Mapper[$sourceType, $targetType]{ case ..${clauses.flatten} } """)
+      Some(q""" $pkg.Mapper[$sourceType, $targetType]{ case ..${clauses.flatten} } """)
     } else None
   }
   def knownDirectSubclasses(tpe: c.Type): Set[c.Symbol] = {
@@ -288,6 +289,7 @@ class Macro(val c: Context) {
     t.typeConstructor
       .member(c.universe.termNames.CONSTRUCTOR)
       .alternatives
+      .filter(_.isPublic)
       .find(_.asMethod.paramLists match {
         case List(List(p)) => o <:< p.typeSignature
         case _             => false
