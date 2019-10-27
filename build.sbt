@@ -27,6 +27,6 @@ scalacOptions in Test += "-Ywarn-unused:imports,-patvars,-privates,-locals,-expl
 
 val silencerVersion = "1.4.4"
 libraryDependencies += compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full)
-//libraryDependencies += "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
+libraryDependencies += "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
 scalacOptions += "-P:silencer:globalFilters=parameter value [a-z0-9$]+ in anonymous function is never used"
 //scalacOptions += s"-P:silencer:sourceRoots=${baseDirectory.value.getCanonicalPath}"
