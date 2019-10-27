@@ -1,6 +1,7 @@
 package com.teamlab.scala.konv
 
 import utest._
+import com.github.ghik.silencer.silent
 
 object KonvBasicSpec extends TestSuite {
   val tests = Tests {
@@ -49,7 +50,7 @@ object KonvBasicSpec extends TestSuite {
       //    }
       assert(From(src).to(Target) == tar)
     }
-    test("Apply Overrids") {
+    test("Apply Override") {
       case class Source(bbb: Int, aaa: String)
 
       case class Target(aaa: String, bbb: Int)
@@ -58,10 +59,7 @@ object KonvBasicSpec extends TestSuite {
         def apply(a: Int): Int = a
 
         // but not public
-        private def apply(a: Long): Target = {
-          println(a + 2) // dismiss warning
-          ???
-        }
+        @silent private def apply(a: Long): Target = ???
       }
 
       val src = Source(10, "hhh")
@@ -91,23 +89,59 @@ object KonvBasicSpec extends TestSuite {
       }
     }
     test("create by constructor") {
+      case class Source(bbb: Int, aaa: String)
+      val source = Source(100, "test")
       test("need constructor") {
         trait Target
-        case class Source(bbb: Int, aaa: String)
         classOf[Target].getClass // dismiss warning
         assert(compileError("""
-        From(Source(100, "xxx")).to[Target]
+        From(source).to[Target]
       """).msg.contains("has not public constructor"))
       }
       test("constructor has no arguments") {
         class Target
-        case class Source(bbb: Int)
-        assert(From(Source(100)).to[Target].isInstanceOf[Target])
+        assert(From(source).to[Target].isInstanceOf[Target])
       }
       test("constructor has one arguments") {
         class Target(val bbb: Int)
-        case class Source(bbb: Int)
-        assert(From(Source(100)).to[Target].bbb == 100)
+        assert(From(source).to[Target].bbb == 100)
+      }
+      test("constructor has one arguments but field unmatched") {
+        @silent class Target(val xxx: Int)
+        compileError(""" From(source).to[Target] """).check("", "unspecified value parameter xxx")
+      }
+      test("constructor has source type one argument") {
+        class Target(val xxx: Source)
+        From(source).to[Target].xxx ==> source
+      }
+      test("constructor has source type two argument") {
+        @silent class Target(val xxx: Source, val yyy: Source)
+        compileError(""" From(source).to[Target] """).check("", "unspecified value parameter")
+      }
+      test("private constructor") {
+        @silent class Target private (val xxx: Source)
+        compileError(""" From(source).to[Target] """).check("", "has not public constructor")
+      }
+      test("private primary and sub public constructor") {
+        class Target private (val xxx: Source) {
+          def this(aaa: String) {
+            this(Source(999, "x" + aaa))
+          }
+        }
+        From(source).to[Target].xxx.aaa ==> "xtest"
+      }
+      test("private primary and sub multi public constructor") {
+        @silent class Target private (val xxx: Source) {
+          def this(aaa: String) {
+            this(source)
+          }
+          def this(bbb: Int) {
+            this(source)
+          }
+        }
+        compileError("""
+          From(source).to[Target]
+        """).check("", "Target has not primary constructor. 2 constructors exists")
       }
     }
     test("create by function") {
