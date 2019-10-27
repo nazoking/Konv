@@ -21,19 +21,19 @@ object DefaultsTest extends TestSuite with Defaults {
     test("list same item") {
       implicitly[Mapper[List[Int], Set[Int]]].map(List(1, 2)) ==> Set(1, 2)
     }
-    test("list othre item use impliict Konv") {
+    test("list other item use implicit Mapper") {
       implicit val intTOString = Mapper[Int, String](_.toString)
       implicitly[Mapper[List[Int], Set[Int]]].map(List(1, 2)) ==> Set(1, 2)
       implicitly[Mapper[List[Int], Set[String]]].map(List(1, 2)) ==> Set("1", "2")
     }
-    test("map othre item use impliict Konv") {
+    test("map othre item use implicit Mapper") {
       implicit val intTOString = Mapper[Int, String](_.toString)
       assert(
         implicitly[Mapper[Map[String, Int], Map[String, String]]]
           .map(Map("1" -> 1, "2" -> 2)) == Map("1" -> "1", "2" -> "2")
       )
     }
-    test("map option use impliict Konv") {
+    test("map option use implicit Mapper") {
       implicit val intTOString = Mapper[Int, String](_.toString)
       implicitly[Mapper[Option[Int], Option[Int]]].map(Some(1)) ==> Some(1)
       implicitly[Mapper[Option[Int], Option[String]]].map(Some(1)) ==> Some("1")
