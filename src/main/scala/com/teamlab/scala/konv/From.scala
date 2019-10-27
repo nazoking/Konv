@@ -2,59 +2,37 @@ package com.teamlab.scala.konv
 
 import scala.language.experimental.macros
 import scala.language.dynamics
+import com.teamlab.scala.konv.internal.Macro
 
 class From private[From] (val args: Seq[(String, Any)]) {
 
-  def to[A]: A = macro internal.Macro.buildByConstructor[A]
+  def to[A]: A = macro Macro.buildByConstructor[A]
 
-  def to[A](factory: From => A): A = ???
-  def to[A](factory: (_) => A): A = macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _) => A): A = macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _) => A): A = macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
+  def to[A](factory: (_) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A = macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A =
+    macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A =
+    macro Macro.buildByFactory[A]
+  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A =
+    macro Macro.buildByFactory[A]
 }
 
 /**
