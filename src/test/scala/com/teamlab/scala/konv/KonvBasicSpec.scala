@@ -26,6 +26,15 @@ object KonvBasicSpec extends TestSuite {
         assert(From(src, aaa = "!" + src.aaa).to(Target.apply _) == tar2)
       }
     }
+    test("getCode") {
+      implicit val v = Mapper { a: Int =>
+        a.toString
+      }
+      From(1).to[String] ==> "1"
+      compileError("""
+      From(1).getCode.to[String]
+      """).check("", "v.map(1)")
+    }
     test("Renamed ") {
       case class Source(bbb: Int, aaa: String, ccc: Long)
 

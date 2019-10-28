@@ -3,7 +3,7 @@ package com.teamlab.scala.konv.internal
 import scala.reflect.api.{Position => Pos}
 import scala.reflect.macros.blackbox.Context
 
-import com.teamlab.scala.konv.{From, Mapper}
+import com.teamlab.scala.konv.{Config, From, Mapper}
 
 class Macro(val c: Context) {
   import c.universe._
@@ -11,7 +11,7 @@ class Macro(val c: Context) {
   private class MacroError(message: String, var pos: Option[Pos] = None) extends Exception(message) {
     def this(message: String, pos: Pos) = this(message, Some(pos))
   }
-  private def macroErrorGuard[B](f: => c.Expr[B]): c.Expr[B] = {
+  private def macroErrorGuard[TO](f: => c.Expr[TO]): c.Expr[TO] = {
     try f
     catch {
       case e: MacroError =>
@@ -19,12 +19,12 @@ class Macro(val c: Context) {
           e.pos.getOrElse(c.macroApplication.pos).asInstanceOf[c.Position],
           e.getMessage
         )
-        c.Expr[B](q"")
+        c.Expr[TO](q"")
     }
   }
-  def generateMappingImpl[A: c.WeakTypeTag, B: c.WeakTypeTag]: c.Expr[Mapper[A, B]] = macroErrorGuard {
-    val sourceType = weakTypeOf[A]
-    val targetType = weakTypeOf[B]
+  def generateMappingImpl[FROM: c.WeakTypeTag, TO: c.WeakTypeTag]: c.Expr[Mapper[FROM, TO]] = macroErrorGuard {
+    val sourceType = weakTypeOf[FROM]
+    val targetType = weakTypeOf[TO]
 //    val to = if (targetType.typeSymbol.isClass && targetType.typeSymbol.asClass.isCaseClass) {
 //      q"to[${targetType}]"
 //    } else {
@@ -40,13 +40,27 @@ class Macro(val c: Context) {
   }
 
   case class Factory(tree: Tree, method: MethodSymbol)
-  def buildByConstructor[A: c.WeakTypeTag]: c.Expr[A] = macroErrorGuard {
-    val typ = weakTypeOf[A]
+  def buildByConstructor[TO: c.WeakTypeTag, ConfigTag: c.WeakTypeTag]: c.Expr[TO] = macroErrorGuard {
+    val typ = weakTypeOf[TO]
     val (args, overwrites) = findArs(c.prefix.tree)
-    by(getConstructorFactory(typ), args, overwrites.toMap)
+    by[TO](getConstructorFactory(typ), args, overwrites.toMap, ConfigValue.parse(c.weakTypeOf[ConfigTag]))
   }
-  def buildByFactory[A: c.WeakTypeTag](factory: c.Tree): c.Expr[A] =
+  object ConfigValue extends Enumeration {
+    val GetCode = Value
+    def parse(
+        value: c.Type,
+        config: ConfigValue.ValueSet = ConfigValue.ValueSet()
+    ): ConfigValue.ValueSet = {
+      if (value.typeConstructor == c.typeOf[Config.GetCode[_]].typeConstructor) {
+        parse(value.typeArgs.head, config + ConfigValue.GetCode)
+      } else
+        config
+    }
+  }
+
+  def buildByFactory[TO: c.WeakTypeTag, ConfigTag: c.WeakTypeTag](factory: c.Tree): c.Expr[TO] =
     macroErrorGuard {
+//      val config = parseConfig(c.weakTypeOf[ConfigTag])
       val ftr = factory match {
         case q"({ (..$_) => $method(..$_) })" =>
           Factory(method, method.symbol.asMethod)
@@ -55,21 +69,21 @@ class Macro(val c: Context) {
           Factory(obj, method.asMethod)
       }
       val (args, overwrites) = findArs(c.prefix.tree)
-      by(Right(ftr), args, overwrites.toMap)
+      by[TO](Right(ftr), args, overwrites.toMap, ConfigValue.parse(c.weakTypeOf[ConfigTag]))
     }
   private def findArs(
       prefix: c.Tree
   ): (Seq[c.Tree], Seq[(c.TermName, c.Tree)]) =
     prefix
       .collect {
-        case q"""$from.applyDynamicNamed("apply")(..$named)""" if from.tpe =:= typeOf[From].companion =>
+        case q"""$from.applyDynamicNamed("apply")(..$named)""" if from.tpe =:= typeOf[From[Config.Empty]].companion =>
           val (args, overwrites) = named
             .collect {
               case q"($key, $value)" => TermName(literalString(key)) -> value
             }
             .partition(_._1.toString.isEmpty)
           args.map(_._2) -> overwrites
-        case q"""$from.applyDynamic("apply")(..$args)""" if from.tpe =:= typeOf[From].companion =>
+        case q"""$from.applyDynamic("apply")(..$args)""" if from.tpe =:= typeOf[From[Config.Empty]].companion =>
           args -> Seq()
       }
       .headOption
@@ -77,15 +91,16 @@ class Macro(val c: Context) {
         throw new MacroError(s"no match From.apply ${showRaw(c.prefix.tree)}")
       )
 
-  private def by[B: c.WeakTypeTag](
+  private def by[TO: c.WeakTypeTag](
       factory: Either[Exception, Factory],
       args: Seq[c.Tree],
-      overwrites: Map[c.TermName, c.Tree]
-  ): c.Expr[B] = {
+      overwrites: Map[c.TermName, c.Tree],
+      config: ConfigValue.ValueSet
+  ): c.Expr[TO] = {
     val sources = args.map(SourceInfo.apply)
     val ret = sources.headOption
       .flatMap { s =>
-        val ret = autoConvert(s.tree, s.tpe, weakTypeOf[B])
+        val ret = autoConvert(s.tree, s.tpe, weakTypeOf[TO])
         if (ret.isDefined) {
           (args.drop(1) ++ overwrites.toSeq.map(_._2)).headOption.foreach { op =>
             throw new MacroError(s"arguments use only first", op.pos)
@@ -96,13 +111,16 @@ class Macro(val c: Context) {
       .getOrElse {
         factory match {
           case Right(fct) =>
-            val px = FactoryParameters(weakTypeOf[B], fct.tree, fct.method, sources, overwrites)
+            val px = FactoryParameters(weakTypeOf[TO], fct.tree, fct.method, sources, overwrites)
             q"""{ ..${px.parameterNameDefines}; ${px.callTree()} }"""
           case Left(err) => throw err
         }
       }
+    if (config.contains(ConfigValue.GetCode)) {
+      c.abort(c.prefix.tree.pos, s"$pkg.From.getCode !!!!!!!!!!!!!!\n ${showCode(ret)}")
+    }
 //    println(ret)
-    c.Expr[B](ret)
+    c.Expr[TO](ret)
   }
 
   private def getConstructorFactory(typ: c.Type) = {

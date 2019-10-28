@@ -3,58 +3,60 @@ package com.teamlab.scala.konv
 import scala.language.experimental.macros
 import scala.language.dynamics
 
-class From private[From] (val args: Seq[(String, Any)]) {
+class From[ConfigTag <: Config] private[From] (val args: Seq[(String, Any)]) {
 
-  def to[A]: A = macro internal.Macro.buildByConstructor[A]
+  /** get generated code as compile error */
+  def getCode: From[Config.GetCode[ConfigTag]] = new From[Config.GetCode[ConfigTag]](args)
 
-  def to[A](factory: From => A): A = ???
-  def to[A](factory: (_) => A): A = macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _) => A): A = macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _) => A): A = macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A): A =
-    macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
-  def to[A](
-      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => A
-  ): A = macro internal.Macro.buildByFactory[A]
+  def to[TO]: TO = macro internal.Macro.buildByConstructor[TO, ConfigTag]
+
+  def to[TO](factory: (_) => TO): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _) => TO): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _) => TO): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _, _, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO): TO =
+    macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](
+      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
+  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](
+      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
+  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](
+      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
+  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](
+      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
+  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](
+      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
+  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](
+      factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
+  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
 }
 
 /**
@@ -66,15 +68,15 @@ class From private[From] (val args: Seq[(String, Any)]) {
   * }}}
   */
 object From extends Dynamic {
-  def applyDynamicNamed(name: String)(args: (String, Any)*): From = {
+  def applyDynamicNamed(name: String)(args: (String, Any)*): From[Config.Empty] = {
     name match {
-      case "apply" => new From(args)
+      case "apply" => new From[Config.Empty](args)
       case _       => throw new RuntimeException(s"method $name $args is not implemented")
     }
   }
-  def applyDynamic(name: String)(args: Any): From = {
+  def applyDynamic(name: String)(args: Any): From[Config.Empty] = {
     name match {
-      case "apply" => new From(Seq("" -> args))
+      case "apply" => new From[Config.Empty](Seq("" -> args))
       case _       => throw new RuntimeException(s"method $name $args is not implemented")
     }
   }
