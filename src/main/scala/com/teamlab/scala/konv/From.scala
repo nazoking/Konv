@@ -8,6 +8,9 @@ class From[ConfigTag <: Config] private[From] (val args: Seq[(String, Any)]) {
 
   /** get generated code as compile error */
   def getCode: From[Config.GetCode[ConfigTag]] = new From[Config.GetCode[ConfigTag]](args)
+  def enableOptionDefaultsToNone: From[Config.OptionToNone[ConfigTag]] = new From[Config.OptionToNone[ConfigTag]](args)
+  def recursiveAutoMapping: From[Config.RecursiveAutoMapping[ConfigTag]] =
+    new From[Config.RecursiveAutoMapping[ConfigTag]](args)
 
   def to[TO]: TO = macro Macro.buildByConstructor[TO, ConfigTag]
 
@@ -75,9 +78,9 @@ object From extends Dynamic {
       case _       => throw new RuntimeException(s"method $name $args is not implemented")
     }
   }
-  def applyDynamic(name: String)(args: Any): From[Config.Empty] = {
+  def applyDynamic(name: String)(args: Any*): From[Config.Empty] = {
     name match {
-      case "apply" => new From[Config.Empty](Seq("" -> args))
+      case "apply" => new From[Config.Empty](args.map("" -> _))
       case _       => throw new RuntimeException(s"method $name $args is not implemented")
     }
   }

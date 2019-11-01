@@ -11,6 +11,10 @@ class Macro(val c: Context) {
   private class MacroError(message: String, var pos: Option[Pos] = None) extends Exception(message) {
     def this(message: String, pos: Pos) = this(message, Some(pos))
   }
+  implicit class BoolOption(b: Boolean) {
+    def toOption[A](f: => A): Option[A] = if (b) Some(f) else None
+  }
+
   private def macroErrorGuard[TO](f: => c.Expr[TO]): c.Expr[TO] = {
     try f
     catch {
@@ -43,24 +47,11 @@ class Macro(val c: Context) {
   def buildByConstructor[TO: c.WeakTypeTag, ConfigTag: c.WeakTypeTag]: c.Expr[TO] = macroErrorGuard {
     val typ = weakTypeOf[TO]
     val (args, overwrites) = findArs(c.prefix.tree)
-    by[TO](getConstructorFactory(typ), args, overwrites.toMap, ConfigValue.parse(c.weakTypeOf[ConfigTag]))
-  }
-  object ConfigValue extends Enumeration {
-    val GetCode = Value
-    def parse(
-        value: c.Type,
-        config: ConfigValue.ValueSet = ConfigValue.ValueSet()
-    ): ConfigValue.ValueSet = {
-      if (value.typeConstructor == c.typeOf[Config.GetCode[_]].typeConstructor) {
-        parse(value.typeArgs.head, config + ConfigValue.GetCode)
-      } else
-        config
-    }
+    by[TO](getConstructorFactory(typ), args, overwrites.toMap, ConfigValueSet(c.weakTypeOf[ConfigTag]))
   }
 
   def buildByFactory[TO: c.WeakTypeTag, ConfigTag: c.WeakTypeTag](factory: c.Tree): c.Expr[TO] =
     macroErrorGuard {
-//      val config = parseConfig(c.weakTypeOf[ConfigTag])
       val ftr = factory match {
         case q"({ (..$_) => $method(..$_) })" =>
           Factory(method, method.symbol.asMethod)
@@ -69,7 +60,7 @@ class Macro(val c: Context) {
           Factory(obj, method.asMethod)
       }
       val (args, overwrites) = findArs(c.prefix.tree)
-      by[TO](Right(ftr), args, overwrites.toMap, ConfigValue.parse(c.weakTypeOf[ConfigTag]))
+      by[TO](Right(ftr), args, overwrites.toMap, ConfigValueSet(c.weakTypeOf[ConfigTag]))
     }
   private def findArs(
       prefix: c.Tree
@@ -95,7 +86,7 @@ class Macro(val c: Context) {
       factory: Either[Exception, Factory],
       args: Seq[c.Tree],
       overwrites: Map[c.TermName, c.Tree],
-      config: ConfigValue.ValueSet
+      config: Config.ValueSet
   ): c.Expr[TO] = {
     val sources = args.map(SourceInfo.apply)
     val ret = sources.headOption
@@ -111,13 +102,13 @@ class Macro(val c: Context) {
       .getOrElse {
         factory match {
           case Right(fct) =>
-            val px = FactoryParameters(weakTypeOf[TO], fct.tree, fct.method, sources, overwrites)
+            val px = FactoryParameters(weakTypeOf[TO], fct.tree, fct.method, sources, overwrites, config)
             q"""{ ..${px.parameterNameDefines}; ${px.callTree()} }"""
           case Left(err) => throw err
         }
       }
-    if (config.contains(ConfigValue.GetCode)) {
-      c.abort(c.prefix.tree.pos, s"$pkg.From.getCode !!!!!!!!!!!!!!\n ${showCode(ret)}")
+    if (config.hasGetCode) {
+      c.abort(c.prefix.tree.pos, s"$pkg.From.getCode !!!!!!!!!!!!!!\n ${show(ret)}")
     }
 //    println(ret)
     c.Expr[TO](ret)
@@ -146,12 +137,14 @@ class Macro(val c: Context) {
       factoryTree: c.Tree,
       factory: MethodSymbol,
       sources: Seq[SourceInfo],
-      overwrites: Map[c.TermName, c.Tree] = Map.empty
+      overwrites: Map[c.TermName, c.Tree] = Map.empty,
+      config: Config.ValueSet = ConfigValueSet.empty()
   ) {
     case class Param(param: c.Symbol) {
       def name = param.name.toTermName
       def tpe = param.typeSignature.asSeenFrom(targetType, targetType.typeSymbol.asClass)
       def hasDefault = param.asTerm.isParamWithDefault
+      def isOption = param.typeSignature.typeConstructor == c.typeOf[Option[_]].typeConstructor
     }
     sealed trait Parameter {
       def param: Param
@@ -170,6 +163,19 @@ class Macro(val c: Context) {
     case class Unmatched(param: Param, source: SourceInfo, sourceType: c.Type) extends Parameter with WithSource {
       override def tree = q"""${param.name} = ${source.name}.${param.name}"""
     }
+    case class OptionToNone(param: Param) extends Parameter {
+      override def tree: c.Tree = q"""${param.name} = None"""
+    }
+    case class RecursiveAutoMapping(param: Param, source: SourceInfo) extends Parameter with WithSource {
+      def calls(x: c.Tree): List[TermName] = x match {
+        case Select(pref, TermName(term)) => TermName(term) :: calls(pref)
+        case _                            => Nil
+      }
+      override def tree: c.Tree =
+        q"""${param.name.toTermName} = ($pkg.From(${source.name}.${param.name}).${TermName(
+          calls(c.prefix.tree).reverse.mkString(".")
+        )}).to[${param.tpe}] """
+    }
     case class NotFound(param: Param) extends Parameter {}
 
     val params: List[Parameter] = factory.paramLists.head
@@ -183,12 +189,14 @@ class Macro(val c: Context) {
                 case Some(v) => Use(parameter, v, source)
                 case None =>
                   getImplicitConvert(q"${source.name}.${parameter.name}", sourceType, parameter.tpe) match {
-                    case Some(u) => Use(parameter, u, source)
-                    case None    => Unmatched(parameter, source, sourceType)
+                    case Some(u)                                => Use(parameter, u, source)
+                    case None if config.hasRecursiveAutoMapping => RecursiveAutoMapping(parameter, source)
+                    case None                                   => Unmatched(parameter, source, sourceType)
                   }
               }
           } orElse
-          (if (parameter.hasDefault) Some(Default(parameter)) else None) getOrElse
+          parameter.hasDefault.toOption(Default(parameter)) orElse
+          (config.hasOptionToNone && parameter.isOption).toOption(OptionToNone(parameter)) getOrElse
           NotFound(parameter)
       }
     lazy val errorMessages: List[String] = params.collect {
@@ -221,7 +229,7 @@ class Macro(val c: Context) {
     }
     def parameterNameDefines: Set[c.Tree] =
       params.collect { case c: WithSource => c.source }.toSet.map { s: SourceInfo =>
-        q"""val ${s.name} = ${s.tree}"""
+        q"""val ${s.name}:${s.tpe} = ${s.tree}"""
       }
   }
   def findSourceField(sources: Seq[SourceInfo], name: TermName): Option[(SourceInfo, c.universe.MethodSymbol)] =
@@ -242,16 +250,17 @@ class Macro(val c: Context) {
   ): Option[c.Tree] =
     // if exists `implicit Mapper[SOURCE, TARGET]`
     getImplicitMapperValue(sourceType, targetType).map(mapper => q"$mapper.map($source)") orElse
-      // if exists `implicit Mapper[SOURCE, TARGET]`
+      // if can compose Mapper( exists all sub class mapper )`
       synthesisMapper(sourceType, targetType).map(mapper => q"$mapper.map($source)") orElse
       // if is `TARGET extends SOURCE`
-      (if (sourceType <:< targetType) Some(source) else None) orElse
+      (sourceType <:< targetType).toOption(source) orElse
+      // if exists implicit conversion
       getImplicitConvert(source, sourceType, targetType) orElse
       // if exists constructor `new TARGET(SOURCE)`
       findSingleValueConstructor(targetType, sourceType).map(_ => q"new $targetType($source)") orElse
       findSingleValueCaseClassParam(sourceType).flatMap { param =>
         // if `case class SOURCE(TARGET)` then SOURCE.TARGET
-        (if (param.typeSignature <:< targetType) Some(q"$source.${param.name.toTermName}") else None) orElse
+        (param.typeSignature <:< targetType).toOption(q"$source.${param.name.toTermName}") orElse
           // if `case class SOURCE(PARAM1)` and `new TARGET(SOURCE.PARAM1)`
           findSingleValueConstructor(targetType, param.typeSignature)
             .map(_ => q"new $targetType($source.${param.name.toTermName})")
@@ -262,40 +271,39 @@ class Macro(val c: Context) {
       silent = true,
       withMacrosDisabled = false
     )
-    if (t.isEmpty) None else Some(t)
+    Some(t).filter(_.nonEmpty)
   }
   def getImplicitConvert(source: c.Tree, sourceType: c.Type, targetType: c.Type): Option[c.Tree] = {
     val t = c.inferImplicitView(source, sourceType, targetType, silent = true)
-    if (t.isEmpty) None else Some(q"$t($source)")
+    Some(t).filter(_.nonEmpty).map(t => q"$t($source)")
   }
   def synthesisMapper(sourceType: c.Type, targetType: c.Type): Option[c.Tree] = {
     val pName = TermName(c.freshName())
     val pNameTree = q"$pName"
     val clauses = knownDirectSubclasses(sourceType).toSeq.map { sub =>
+      // SOURCE.SUB => TARGET
       autoConvert(pNameTree, sub.asType.toType, targetType)
         .orElse {
           knownDirectSubclasses(targetType).find(_.name == sub.name).flatMap { ts =>
-            autoConvert(pNameTree, sub.asType.toType, ts.asType.toType).orElse {
-              getConstructorFactory(ts.asType.toType).right.toOption.flatMap { f =>
-                val fParams =
-                  FactoryParameters(
-                    ts.asType.toType,
-                    f.tree,
-                    f.method,
-                    Seq(SourceInfo(pNameTree, sub.asType.toType, pName))
-                  )
-                if (!fParams.hasError) Some(fParams.callTree()) else None
+            // same name
+            // can convert SOURCE.SUB => TARGET.SUB
+            autoConvert(pNameTree, sub.asType.toType, ts.asType.toType) orElse
+              // SOURCE.SUB => TARGET.SUB ( TARGET.SUB is object)
+              ts.isModuleClass.toOption(q"${ts.asClass.module}") orElse
+              // SOURCE.SUB => new TARGET.SUB(x=SOURCE.SUB.x, y=SOURCE.SUB.y, ...)
+              getConstructorFactory(ts.asType.toType).toOption.flatMap { f =>
+                val src = Seq(SourceInfo(pNameTree, sub.asType.toType, pName))
+                val fParams = FactoryParameters(ts.asType.toType, f.tree, f.method, src)
+                (!fParams.hasError).toOption(fParams.callTree())
               }
-            }
           }
         }
         .map { tree =>
           cq""" $pName:${sub.asType.toType} => $tree """
         }
     }
-    if (clauses.nonEmpty && clauses.forall(_.isDefined)) {
-      Some(q""" $pkg.Mapper[$sourceType, $targetType]{ case ..${clauses.flatten} } """)
-    } else None
+    (clauses.nonEmpty && clauses.forall(_.isDefined))
+      .toOption(q""" $pkg.Mapper[$sourceType, $targetType]{ case ..${clauses.flatten} } """)
   }
   def knownDirectSubclasses(tpe: c.Type): Set[c.Symbol] = {
     if (tpe.typeSymbol.isClass && tpe.typeSymbol.asClass.isSealed) {
@@ -303,7 +311,7 @@ class Macro(val c: Context) {
     } else Set.empty
   }
 
-  def findSingleValueConstructor(t: c.Type, o: c.Type) = {
+  def findSingleValueConstructor(t: c.Type, o: c.Type): Option[c.Symbol] = {
     t.typeConstructor
       .member(c.universe.termNames.CONSTRUCTOR)
       .alternatives
@@ -313,18 +321,18 @@ class Macro(val c: Context) {
         case _             => false
       })
   }
-  def findSingleValueCaseClassParam(t: c.Type) = {
-    if (t.typeSymbol.isClass && t.typeSymbol.asClass.isCaseClass) {
+  def findSingleValueCaseClassParam(t: c.Type): Option[c.Symbol] = {
+    (t.typeSymbol.isClass && t.typeSymbol.asClass.isCaseClass).toOption(true).flatMap { _ =>
       t.typeConstructor.decls
         .collectFirst {
-          case m: MethodSymbol if m.isPrimaryConstructor => m
+          case m: MethodSymbol if m.isPrimaryConstructor => m.paramLists.head
         }
-        .map(_.paramLists.head) match {
-        case Some(p :: Nil) => Some(p)
-        case _              => None
-      }
-    } else {
-      None
+        .collectFirst { case p :: Nil => p }
     }
+  }
+  object ConfigValueSet {
+    import Config._
+    def apply(value: c.Type): ValueSet = new ValueSet(Config.parse(c)(value, Values.ValueSet()))
+    def empty() = new ValueSet(Values.ValueSet())
   }
 }
