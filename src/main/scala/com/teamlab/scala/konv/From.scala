@@ -2,61 +2,62 @@ package com.teamlab.scala.konv
 
 import scala.language.experimental.macros
 import scala.language.dynamics
+import com.teamlab.scala.konv.internal.Macro
 
 class From[ConfigTag <: Config] private[From] (val args: Seq[(String, Any)]) {
 
   /** get generated code as compile error */
   def getCode: From[Config.GetCode[ConfigTag]] = new From[Config.GetCode[ConfigTag]](args)
 
-  def to[TO]: TO = macro internal.Macro.buildByConstructor[TO, ConfigTag]
+  def to[TO]: TO = macro Macro.buildByConstructor[TO, ConfigTag]
 
-  def to[TO](factory: (_) => TO): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
-  def to[TO](factory: (_, _) => TO): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
-  def to[TO](factory: (_, _, _) => TO): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_) => TO): TO = macro Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _) => TO): TO = macro Macro.buildByFactory[TO, ConfigTag]
+  def to[TO](factory: (_, _, _) => TO): TO = macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _, _, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO): TO =
-    macro internal.Macro.buildByFactory[TO, ConfigTag]
+    macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](
       factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
-  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  ): TO = macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](
       factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
-  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  ): TO = macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](
       factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
-  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  ): TO = macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](
       factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
-  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  ): TO = macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](
       factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
-  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  ): TO = macro Macro.buildByFactory[TO, ConfigTag]
   def to[TO](
       factory: (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => TO
-  ): TO = macro internal.Macro.buildByFactory[TO, ConfigTag]
+  ): TO = macro Macro.buildByFactory[TO, ConfigTag]
 }
 
 /**
