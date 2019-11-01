@@ -195,8 +195,8 @@ class Macro(val c: Context) {
                   }
               }
           } orElse
-          parameter.hasDefault.toOption(Default(parameter)) orElse
-          (config.hasOptionToNone && parameter.isOption).toOption(OptionToNone(parameter)) getOrElse
+          (config.hasOptionToNone && parameter.isOption).toOption(OptionToNone(parameter)) orElse
+          parameter.hasDefault.toOption(Default(parameter)) getOrElse
           NotFound(parameter)
       }
     lazy val errorMessages: List[String] = params.collect {
@@ -250,12 +250,12 @@ class Macro(val c: Context) {
   ): Option[c.Tree] =
     // if exists `implicit Mapper[SOURCE, TARGET]`
     getImplicitMapperValue(sourceType, targetType).map(mapper => q"$mapper.map($source)") orElse
-      // if can compose Mapper( exists all sub class mapper )`
-      synthesisMapper(sourceType, targetType).map(mapper => q"$mapper.map($source)") orElse
       // if is `TARGET extends SOURCE`
       (sourceType <:< targetType).toOption(source) orElse
       // if exists implicit conversion
       getImplicitConvert(source, sourceType, targetType) orElse
+      // if can compose Mapper( exists all sub class mapper )`
+      synthesisMapper(sourceType, targetType).map(mapper => q"$mapper.map($source)") orElse
       // if exists constructor `new TARGET(SOURCE)`
       findSingleValueConstructor(targetType, sourceType).map(_ => q"new $targetType($source)") orElse
       findSingleValueCaseClassParam(sourceType).flatMap { param =>

@@ -46,4 +46,8 @@ object Mapper {
       a
     }
   }
+  trait UnsafeOption {
+    implicit def optionToA[A] = Mapper[Option[A], A](_.get)
+    implicit def optionToB[A, B](implicit m: Mapper[A, B]) = Mapper[Option[A], B](a => m.map(a.get))
+  }
 }
